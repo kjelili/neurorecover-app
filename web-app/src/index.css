@@ -1,0 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Instrument+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #07c4af;
+    --color-accent: #f96b45;
+    --color-bg: #fafaf9;
+    --color-surface: #ffffff;
+    --color-text: #1f1e1d;
+    --color-text-secondary: #6f6b65;
+    --color-border: #e8e7e4;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-warm-50 text-warm-950 font-sans antialiased;
+    font-size: 1rem;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background-color: rgba(7, 196, 175, 0.15);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .tap-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  .card {
+    @apply bg-white rounded-2xl border border-warm-200 shadow-soft;
+  }
+
+  .card-hover {
+    @apply card transition-all duration-200 hover:shadow-card hover:border-primary-200 hover:-translate-y-0.5;
+  }
+
+  .btn-primary {
+    @apply tap-target inline-flex items-center justify-center rounded-xl bg-primary-600 text-white font-semibold px-6 py-3
+    hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2
+    transition-all duration-200 active:scale-[0.98] shadow-soft;
+  }
+
+  .btn-secondary {
+    @apply tap-target inline-flex items-center justify-center rounded-xl border-2 border-warm-200 text-warm-700 font-medium px-6 py-3
+    hover:border-primary-300 hover:text-primary-700 hover:bg-primary-50
+    focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2
+    transition-all duration-200;
+  }
+
+  .btn-ghost {
+    @apply tap-target inline-flex items-center justify-center rounded-xl text-warm-600 font-medium px-4 py-2
+    hover:bg-warm-100 hover:text-warm-800
+    focus:outline-none focus:ring-2 focus:ring-primary-400
+    transition-all duration-200;
+  }
+
+  .section-title {
+    @apply font-display font-bold text-2xl sm:text-3xl text-warm-950 tracking-tight;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+  }
+
+  .badge-primary {
+    @apply badge bg-primary-100 text-primary-800;
+  }
+
+  .badge-accent {
+    @apply badge bg-accent-100 text-accent-800;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl bg-warm-50 border border-warm-200 px-4 py-3 text-warm-900
+    placeholder:text-warm-400
+    focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100
+    transition-colors;
+  }
+}
