@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import type { GameType, SessionMetrics, SessionSummary } from '../types/session';
 import { saveSession } from '../utils/sessionStorage';
+import { computeQualityScore } from '../utils/recoveryInsights';
 import { useSession } from '../context/SessionContext';
 import { SESSION_DURATION_PRESETS, type DurationPreset } from '../config/appConfig';
 
@@ -13,11 +14,14 @@ interface SessionWrapperProps {
 export function SessionWrapper({ game, children, getCurrentMetrics }: SessionWrapperProps) {
   const {
     sessionActive, game: ctxGame, durationSeconds, elapsedSeconds,
-    startSession, endSession, setOnSessionComplete, setGetCurrentMetrics,
+    startSession, endSession, setOnSessionComplete, setGetCurrentMetrics, setGetCurrentAnnotations,
     isPaused, pauseRemainingSeconds, startPause,
   } = useSession();
 
   const [preset, setPreset] = useState<DurationPreset>('standard');
+  const [painLevel, setPainLevel] = useState(0);
+  const [fatigueLevel, setFatigueLevel] = useState(0);
+  const [notes, setNotes] = useState('');
 
   const handleComplete = useCallback((summary: SessionSummary | null | undefined) => {
     if (summary != null && typeof summary.endedAt === 'number') saveSession(summary);
@@ -33,13 +37,34 @@ export function SessionWrapper({ game, children, getCurrentMetrics }: SessionWra
     return () => setGetCurrentMetrics(null);
   }, [sessionActive, ctxGame, game, setGetCurrentMetrics, getCurrentMetrics]);
 
+  useEffect(() => {
+    if (sessionActive && ctxGame === game) {
+      setGetCurrentAnnotations(() => ({
+        painLevel,
+        fatigueLevel,
+        notes: notes.trim() || undefined,
+      }));
+    }
+    return () => setGetCurrentAnnotations(null);
+  }, [sessionActive, ctxGame, game, setGetCurrentAnnotations, painLevel, fatigueLevel, notes]);
+
   const handleStart = useCallback(() => {
+    setPainLevel(0);
+    setFatigueLevel(0);
+    setNotes('');
     startSession(game, SESSION_DURATION_PRESETS[preset] * 60);
   }, [game, preset, startSession]);
 
   const handleEnd = useCallback(() => {
-    endSession({ metrics: getCurrentMetrics() });
-  }, [endSession, getCurrentMetrics]);
+    endSession({
+      metrics: getCurrentMetrics(),
+      annotations: {
+        painLevel,
+        fatigueLevel,
+        notes: notes.trim() || undefined,
+      },
+    });
+  }, [endSession, getCurrentMetrics, painLevel, fatigueLevel, notes]);
 
   if (!sessionActive || ctxGame !== game) {
     return (
@@ -108,6 +133,42 @@ export function SessionWrapper({ game, children, getCurrentMetrics }: SessionWra
           </button>
         </div>
       </div>
+      <div className="card p-4 mb-6">
+        <p className="text-sm font-semibold text-warm-700 mb-3">Session check-in (optional)</p>
+        <div className="grid sm:grid-cols-2 gap-4 mb-3">
+          <label className="text-sm text-warm-500">
+            Pain level: <span className="font-semibold text-warm-700">{painLevel}/10</span>
+            <input
+              type="range"
+              min={0}
+              max={10}
+              value={painLevel}
+              onChange={(e) => setPainLevel(Number(e.target.value))}
+              className="w-full mt-1"
+            />
+          </label>
+          <label className="text-sm text-warm-500">
+            Fatigue level: <span className="font-semibold text-warm-700">{fatigueLevel}/10</span>
+            <input
+              type="range"
+              min={0}
+              max={10}
+              value={fatigueLevel}
+              onChange={(e) => setFatigueLevel(Number(e.target.value))}
+              className="w-full mt-1"
+            />
+          </label>
+        </div>
+        <label className="text-sm text-warm-500">
+          Notes for therapist
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value.slice(0, 300))}
+            placeholder="How did this session feel? (optional)"
+            className="input-field mt-1 min-h-[88px]"
+          />
+        </label>
+      </div>
       {children}
     </>
   );
@@ -120,6 +181,7 @@ interface SessionCompleteScreenProps {
 
 export function SessionCompleteScreen({ summary, onClose }: SessionCompleteScreenProps) {
   const { game, durationSeconds, metrics } = summary;
+  const quality = metrics.qualityScore ?? computeQualityScore(metrics);
 
   useEffect(() => {
     import('../utils/gameSounds').then(({ playSuccess }) => playSuccess());
@@ -161,6 +223,18 @@ export function SessionCompleteScreen({ summary, onClose }: SessionCompleteScree
             <div className="flex justify-between py-2 border-b border-warm-100">
               <span className="text-warm-500">Reaction time</span>
               <span className="font-semibold text-warm-800">{metrics.reactionTimeMs} ms</span>
+            </div>
+          )}
+          <div className="flex justify-between py-2 border-b border-warm-100">
+            <span className="text-warm-500">Quality score</span>
+            <span className="font-semibold text-warm-800">{quality}/100</span>
+          </div>
+          {summary.annotations?.notes && (
+            <div className="pt-2">
+              <p className="text-xs text-warm-400 mb-1">Session note</p>
+              <p className="text-sm text-warm-700 bg-warm-50 border border-warm-200 rounded-lg px-3 py-2">
+                {summary.annotations.notes}
+              </p>
             </div>
           )}
         </div>

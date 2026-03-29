@@ -5,6 +5,8 @@ import { SessionWrapper } from '../components/SessionWrapper';
 import { useHandTracking, type HandResult, type Landmark } from '../hooks/useHandTracking';
 import type { SessionMetrics } from '../types/session';
 import { playGrab } from '../utils/gameSounds';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { speak } from '../utils/voiceCoach';
 
 function distLm(a: Landmark, b: Landmark) {
   return Math.hypot(a.x - b.x, a.y - b.y, (a.z ?? 0) - (b.z ?? 0));
@@ -18,15 +20,15 @@ function isFistClosed(lm: Landmark[]): boolean {
   return avg < 0.15;
 }
 
-const HOLD_MS = 2000;
-
 export function GrabCupGame() {
+  const { settings } = useAppSettings();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [grabbing, setGrabbing] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [score, setScore] = useState(0);
   const holdStartRef = useRef<number | null>(null);
+  const [holdTargetMs, setHoldTargetMs] = useState(2000);
 
   const onResults = useCallback((results: HandResult[]) => {
     if (!results.length) { setGrabbing(false); holdStartRef.current = null; setHoldProgress(0); return; }
@@ -34,10 +36,15 @@ export function GrabCupGame() {
     if (closed) {
       if (!holdStartRef.current) holdStartRef.current = Date.now();
       const elapsed = Date.now() - holdStartRef.current;
-      setHoldProgress(Math.min(100, (elapsed / HOLD_MS) * 100));
-      if (elapsed >= HOLD_MS) {
+      setHoldProgress(Math.min(100, (elapsed / holdTargetMs) * 100));
+      if (elapsed >= holdTargetMs) {
         holdStartRef.current = null;
-        setScore((s) => s + 1);
+        setScore((s) => {
+          const next = s + 1;
+          if (next % 3 === 0) speak('Strong hold. Keep it steady.', settings.voiceCoaching);
+          setHoldTargetMs((prev) => Math.max(1400, prev - 60));
+          return next;
+        });
         setHoldProgress(0);
         playGrab();
       }
@@ -47,11 +54,14 @@ export function GrabCupGame() {
       setGrabbing(false);
       setHoldProgress(0);
     }
-  }, []);
+  }, [holdTargetMs, settings.voiceCoaching]);
 
   useHandTracking({ videoRef, numHands: 1, onResults, enabled: videoReady });
 
-  const getCurrentMetrics = useCallback((): SessionMetrics => ({ score }), [score]);
+  const getCurrentMetrics = useCallback((): SessionMetrics => ({
+    score,
+    difficultyLevel: Math.round((2200 - holdTargetMs) / 80),
+  }), [score, holdTargetMs]);
 
   return (
     <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-5xl mx-auto w-full">
@@ -64,7 +74,7 @@ export function GrabCupGame() {
 
       <SessionWrapper game="grab-cup" getCurrentMetrics={getCurrentMetrics}>
         <p className="text-warm-500 text-sm mb-6">
-          Make a fist and hold for 2 seconds to grab the cup. This exercise strengthens grip and hand closure.
+          Make a fist and hold to grab the cup. Hold time adapts as you improve to progressively challenge grip control.
         </p>
 
         <div className="grid lg:grid-cols-2 gap-6 mb-6">
@@ -100,6 +110,7 @@ export function GrabCupGame() {
             </p>
             <p className="text-primary-600 font-bold text-3xl mb-4">{score}</p>
             <p className="text-warm-400 text-xs">successful grasps</p>
+            <p className="text-warm-400 text-xs mt-2">Current hold target: {(holdTargetMs / 1000).toFixed(1)}s</p>
           </div>
         </div>
 

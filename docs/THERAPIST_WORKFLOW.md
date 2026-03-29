@@ -75,6 +75,17 @@ After each session:
 3. Record brief SOAP-style notes in your EHR or clinic notes.
 4. Set next-session focus (speed, control, endurance, or ROM).
 
+## In-app clinical tools
+
+Enable Therapist Mode in Settings to access:
+
+- Protocol templates (control foundation, reach/precision, grip endurance)
+- Structured assessment form (pain/fatigue pre-post, FMA-hand estimate, ARAT estimate)
+- Per-profile clinical assessment history
+- One-click therapist export bundle (sessions + assessments + profile metadata as JSON)
+
+Use profile switching to separate data for each patient on shared clinic devices.
+
 ## Goal progression strategy
 
 - Week 1 to 2: prioritize movement quality and confidence.

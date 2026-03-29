@@ -4,26 +4,39 @@ import { getLastSession, getRecentSessions, getSessionsThisWeek, getCurrentStrea
 import { getEnabledGames } from '../config/appConfig';
 import type { StoredSession } from '../types/session';
 import { GAME_LABELS } from '../types/session';
+import { computeQualityScore, getRecoveryRecommendations } from '../utils/recoveryInsights';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { getActiveProfile } from '../utils/patientProfiles';
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 export function Dashboard() {
-  const [lastSession, setLastSession] = useState<StoredSession | null>(null);
-  const [recentSessions, setRecentSessions] = useState<StoredSession[]>([]);
+  const { settings } = useAppSettings();
+  const activeProfile = getActiveProfile();
+  const [nowTs, setNowTs] = useState(() => new Date().getTime());
   const games = getEnabledGames();
   const sessionsThisWeek = getSessionsThisWeek();
   const streak = getCurrentStreak();
   const totalMinutes = getTotalMinutes();
-  const weeklyGoal = 3;
+  const weeklyGoal = settings.weeklyGoalSessions;
 
   useEffect(() => {
-    setLastSession(getLastSession());
-    setRecentSessions(getRecentSessions(10));
+    const timer = setInterval(() => setNowTs(new Date().getTime()), 60_000);
+    return () => clearInterval(timer);
   }, []);
 
+  const lastSession: StoredSession | null = getLastSession();
+  const recentSessions: StoredSession[] = getRecentSessions(10);
   const totalSessions = getRecentSessions(200).length;
+  const averageQuality = recentSessions.length
+    ? Math.round(recentSessions.reduce((sum, s) => sum + (s.metrics.qualityScore ?? computeQualityScore(s.metrics)), 0) / recentSessions.length)
+    : 0;
+  const recommendations = getRecoveryRecommendations(recentSessions);
+  const lastSessionDaysAgo = lastSession
+    ? Math.floor((nowTs - lastSession.endedAt) / (1000 * 60 * 60 * 24))
+    : null;
 
   return (
     <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -36,7 +49,18 @@ export function Dashboard() {
               ? 'Start your first exercise below to begin tracking your recovery.'
               : `You've completed ${totalSessions} session${totalSessions !== 1 ? 's' : ''}. Keep going!`}
           </p>
+          <p className="text-sm text-primary-700 mt-1">
+            Active profile: {activeProfile.name}{settings.displayName ? ` • ${settings.displayName}` : ''}
+          </p>
         </div>
+
+        {lastSessionDaysAgo != null && lastSessionDaysAgo >= 2 && (
+          <div className="card p-4 mb-6 border-accent-200 bg-accent-50">
+            <p className="text-sm text-accent-800">
+              It has been {lastSessionDaysAgo} days since your last session. A short 2-minute session today can help maintain momentum.
+            </p>
+          </div>
+        )}
 
         {/* Stats row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -74,6 +98,21 @@ export function Dashboard() {
             <span className="font-display font-bold text-2xl text-warm-800">{totalSessions}</span>
           </div>
         </div>
+
+        {/* Quality */}
+        {recentSessions.length > 0 && (
+          <div className="card p-5 mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">Recovery quality (last 10)</p>
+                <p className="font-display font-bold text-3xl text-primary-700">{averageQuality}/100</p>
+              </div>
+              <div className={`badge ${averageQuality >= 70 ? 'bg-green-100 text-green-700' : averageQuality >= 45 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                {averageQuality >= 70 ? 'Strong trend' : averageQuality >= 45 ? 'Building' : 'Needs consistency'}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Exercises grid */}
         <div className="mb-8">
@@ -152,13 +191,37 @@ export function Dashboard() {
         )}
 
         {/* Tip */}
-        <div className="card p-5 bg-primary-50 border-primary-100">
+        <div className="card p-5 bg-primary-50 border-primary-100 mb-8">
           <div className="flex gap-3">
             <span className="text-xl flex-shrink-0">💡</span>
             <p className="text-sm text-primary-900">
               <strong>Tip:</strong> For best results, position your hand in view of the camera with good lighting. 
               You can also tap or click to play if the camera is unavailable.
             </p>
+          </div>
+        </div>
+
+        <div className="card p-5">
+          <h2 className="font-display font-semibold text-lg text-warm-800 mb-3">Recommended next steps</h2>
+          <div className="space-y-3">
+            {recommendations.map((rec) => (
+              <div key={rec.title} className="border border-warm-200 rounded-xl p-3 bg-white">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-semibold text-warm-800">{rec.title}</p>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    rec.priority === 'high'
+                      ? 'bg-red-100 text-red-700'
+                      : rec.priority === 'medium'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-green-100 text-green-700'
+                  }`}
+                  >
+                    {rec.priority}
+                  </span>
+                </div>
+                <p className="text-sm text-warm-500">{rec.detail}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -28,6 +28,15 @@ export interface SessionMetrics {
   romPerFinger?: number[];
   tremorEstimate?: number;
   smoothnessEstimate?: number;
+  qualityScore?: number;
+  difficultyLevel?: number;
+}
+
+export interface SessionAnnotations {
+  notes?: string;
+  painLevel?: number;
+  fatigueLevel?: number;
+  therapistReviewed?: boolean;
 }
 
 export interface SessionSummary {
@@ -36,6 +45,7 @@ export interface SessionSummary {
   endedAt: number;
   durationSeconds: number;
   metrics: SessionMetrics;
+  annotations?: SessionAnnotations;
 }
 
 export interface StoredSession extends SessionSummary {

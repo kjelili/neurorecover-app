@@ -57,6 +57,46 @@ The app tracks session metrics such as:
 - Reaction time (where applicable)
 
 Data is shown in session history and charts. You can export reports to PDF from the Progress page.
+You can also:
+
+- Export all sessions to CSV
+- Create a JSON backup
+- Import JSON backup to restore data on the same or another device
+
+## 5.1) Session check-in and notes
+
+During active sessions you can add optional:
+
+- Pain level (0-10)
+- Fatigue level (0-10)
+- Session notes
+
+On the Progress page, you can edit therapist annotations for completed sessions.
+
+## 5.2) Settings and accessibility
+
+Open Settings from the app navigation to configure:
+
+- Weekly session goal
+- Daily reminder time
+- Therapist mode
+- High contrast mode
+- Large text mode
+- Reduced motion mode
+- Voice coaching prompts
+
+## 5.3) Multi-profile mode
+
+In Settings, you can manage local patient profiles:
+
+- Create profile
+- Switch active profile
+- Rename profile
+- Delete profile (except the last remaining one)
+
+Each profile keeps its own sessions, progress charts, backups, and clinical assessments locally.
+
+When Therapist Mode is enabled, the Clinical Tools page includes a one-click therapist bundle export (JSON) for the active profile.
 
 ## 6) Data and privacy
 

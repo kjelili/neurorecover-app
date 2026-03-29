@@ -1,22 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getRecentSessions, getSessionsThisWeek, getCurrentStreak, getTotalMinutes } from '../utils/sessionStorage';
+import {
+  exportSessionsCsv,
+  exportSessionsJson,
+  getRecentSessions,
+  getSessionsThisWeek,
+  getCurrentStreak,
+  getTotalMinutes,
+  importSessionsFromJson,
+  updateSessionAnnotations,
+} from '../utils/sessionStorage';
 import { exportProgressPdf } from '../utils/exportPdf';
 import { GAME_LABELS } from '../types/session';
 import type { StoredSession } from '../types/session';
+import { computeQualityScore } from '../utils/recoveryInsights';
+import { useAppSettings } from '../context/AppSettingsContext';
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 export function Progress() {
-  const [sessions, setSessions] = useState<StoredSession[]>([]);
+  const { settings } = useAppSettings();
+  const [, setReloadTick] = useState(0);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [notesDraft, setNotesDraft] = useState('');
+  const [painDraft, setPainDraft] = useState(0);
+  const [fatigueDraft, setFatigueDraft] = useState(0);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
 
-  useEffect(() => {
-    setSessions(getRecentSessions(100));
-  }, []);
-
+  const sessions = getRecentSessions(100);
   const valid = sessions.filter(s => s != null && typeof s.endedAt === 'number');
   const totalMinutes = getTotalMinutes();
   const sessionsThisWeek = getSessionsThisWeek();
@@ -44,6 +58,48 @@ export function Progress() {
     };
   }).filter(g => g.count > 0);
 
+  const qualityTrend = valid.length
+    ? Math.round(valid.reduce((sum, s) => sum + (s.metrics.qualityScore ?? computeQualityScore(s.metrics)), 0) / valid.length)
+    : 0;
+
+  const downloadTextFile = (filename: string, content: string, mime = 'text/plain') => {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const startEdit = (session: StoredSession) => {
+    setSelectedSessionId(session.id);
+    setNotesDraft(session.annotations?.notes ?? '');
+    setPainDraft(session.annotations?.painLevel ?? 0);
+    setFatigueDraft(session.annotations?.fatigueLevel ?? 0);
+  };
+
+  const saveEdit = () => {
+    if (!selectedSessionId) return;
+    updateSessionAnnotations(selectedSessionId, {
+      notes: notesDraft,
+      painLevel: painDraft,
+      fatigueLevel: fatigueDraft,
+      therapistReviewed: true,
+    });
+    setReloadTick((x) => x + 1);
+    setSelectedSessionId(null);
+  };
+
+  const handleImportFile = async (file: File) => {
+    const text = await file.text();
+    const { imported, skipped } = importSessionsFromJson(text);
+    setImportStatus(`Imported ${imported} session(s), skipped ${skipped}.`);
+    setReloadTick((x) => x + 1);
+  };
+
   return (
     <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <div className="max-w-5xl mx-auto">
@@ -54,14 +110,32 @@ export function Progress() {
             </Link>
             <h1 className="section-title">Progress</h1>
           </div>
-          <button
-            type="button"
-            onClick={() => exportProgressPdf(valid)}
-            disabled={valid.length === 0}
-            className="btn-secondary text-sm disabled:opacity-50"
-          >
-            Export PDF
-          </button>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => exportProgressPdf(valid)}
+              disabled={valid.length === 0}
+              className="btn-secondary text-sm disabled:opacity-50"
+            >
+              Export PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadTextFile('neurorecover-sessions.csv', exportSessionsCsv(), 'text/csv')}
+              disabled={valid.length === 0}
+              className="btn-secondary text-sm disabled:opacity-50"
+            >
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadTextFile('neurorecover-backup.json', exportSessionsJson(), 'application/json')}
+              disabled={valid.length === 0}
+              className="btn-secondary text-sm disabled:opacity-50"
+            >
+              Backup JSON
+            </button>
+          </div>
         </div>
 
         {/* Overview cards */}
@@ -76,14 +150,39 @@ export function Progress() {
           </div>
           <div className="card p-4">
             <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">This week</p>
-            <span className={`font-display font-bold text-2xl ${sessionsThisWeek.length >= 3 ? 'text-green-600' : 'text-warm-800'}`}>
-              {sessionsThisWeek.length}/3
+            <span className={`font-display font-bold text-2xl ${sessionsThisWeek.length >= settings.weeklyGoalSessions ? 'text-green-600' : 'text-warm-800'}`}>
+              {sessionsThisWeek.length}/{settings.weeklyGoalSessions}
             </span>
           </div>
           <div className="card p-4">
             <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">Streak</p>
             <span className="font-display font-bold text-2xl text-warm-800">{streak} day{streak !== 1 ? 's' : ''}</span>
           </div>
+        </div>
+
+        <div className="card p-4 mb-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">Quality trend</p>
+              <p className="font-display font-bold text-2xl text-primary-700">{qualityTrend}/100</p>
+            </div>
+            <label className="btn-ghost cursor-pointer text-sm">
+              Import backup JSON
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    void handleImportFile(file);
+                    e.target.value = '';
+                  }
+                }}
+              />
+            </label>
+          </div>
+          {importStatus && <p className="text-sm text-warm-500 mt-2">{importStatus}</p>}
         </div>
 
         {/* Score chart */}
@@ -160,6 +259,8 @@ export function Progress() {
                       <th className="p-3 font-semibold text-warm-500 text-xs uppercase tracking-wider">Exercise</th>
                       <th className="p-3 font-semibold text-warm-500 text-xs uppercase tracking-wider">Score</th>
                       <th className="p-3 font-semibold text-warm-500 text-xs uppercase tracking-wider">Duration</th>
+                      <th className="p-3 font-semibold text-warm-500 text-xs uppercase tracking-wider">Quality</th>
+                      <th className="p-3 font-semibold text-warm-500 text-xs uppercase tracking-wider">Notes</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -169,11 +270,59 @@ export function Progress() {
                         <td className="p-3 capitalize">{s.game.replace(/-/g, ' ')}</td>
                         <td className="p-3 font-medium">{s.metrics.score ?? '—'}</td>
                         <td className="p-3">{Math.floor(s.durationSeconds / 60)}m {s.durationSeconds % 60}s</td>
+                        <td className="p-3">{s.metrics.qualityScore ?? computeQualityScore(s.metrics)}</td>
+                        <td className="p-3">
+                          <button type="button" className="text-primary-600 hover:underline" onClick={() => startEdit(s)}>
+                            {s.annotations?.notes ? 'Edit note' : 'Add note'}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {selectedSessionId && (
+          <div className="card p-5 mb-8">
+            <h3 className="font-display font-semibold text-warm-800 mb-3">Therapist annotation</h3>
+            <div className="grid sm:grid-cols-2 gap-4 mb-3">
+              <label className="text-sm text-warm-500">
+                Pain level ({painDraft}/10)
+                <input
+                  type="range"
+                  min={0}
+                  max={10}
+                  value={painDraft}
+                  onChange={(e) => setPainDraft(Number(e.target.value))}
+                  className="w-full mt-1"
+                />
+              </label>
+              <label className="text-sm text-warm-500">
+                Fatigue level ({fatigueDraft}/10)
+                <input
+                  type="range"
+                  min={0}
+                  max={10}
+                  value={fatigueDraft}
+                  onChange={(e) => setFatigueDraft(Number(e.target.value))}
+                  className="w-full mt-1"
+                />
+              </label>
+            </div>
+            <label className="text-sm text-warm-500 block mb-3">
+              Clinical note
+              <textarea
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value.slice(0, 300))}
+                className="input-field mt-1 min-h-[96px]"
+              />
+            </label>
+            <div className="flex gap-2">
+              <button type="button" className="btn-primary text-sm" onClick={saveEdit}>Save annotation</button>
+              <button type="button" className="btn-ghost text-sm" onClick={() => setSelectedSessionId(null)}>Cancel</button>
             </div>
           </div>
         )}

@@ -5,6 +5,8 @@ import { SessionWrapper } from '../components/SessionWrapper';
 import { useHandTracking, type HandResult, type Landmark } from '../hooks/useHandTracking';
 import type { SessionMetrics } from '../types/session';
 import { playPop } from '../utils/gameSounds';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { speak } from '../utils/voiceCoach';
 
 const ENCOURAGEMENTS = ['Nice pinch!', 'Great reach!', 'Keep going!', 'Well done!'];
 const COLORS = ['#07c4af', '#20e0c8', '#52f5dc', '#029e8f', '#f96b45', '#ff8a6b'];
@@ -21,6 +23,7 @@ function getPinch(lm: Landmark[]): { x: number; y: number } | null {
 }
 
 export function BubbleGame() {
+  const { settings } = useAppSettings();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
@@ -78,13 +81,15 @@ export function BubbleGame() {
     setScore((s) => {
       const next = s + 1;
       if (next % 4 === 0) {
-        setEncouragement(ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)]);
+        const msg = ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
+        setEncouragement(msg);
+        speak(msg, settings.voiceCoaching);
         setTimeout(() => setEncouragement(null), 2000);
       }
       return next;
     });
     playPop();
-  }, []);
+  }, [settings.voiceCoaching]);
 
   const onResults = useCallback((results: HandResult[]) => {
     if (!results.length) return;

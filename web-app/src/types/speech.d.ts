@@ -1,3 +1,4 @@
+/* eslint-disable no-var */
 interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;

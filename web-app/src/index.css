@@ -26,6 +26,26 @@
     min-height: 100vh;
   }
 
+  body.a11y-large-text {
+    font-size: 1.08rem;
+  }
+
+  body.a11y-high-contrast {
+    --color-primary: #008f80;
+    --color-text: #101010;
+    --color-text-secondary: #353535;
+    --color-border: #c9c7c2;
+    filter: contrast(1.08);
+  }
+
+  body.a11y-reduced-motion *,
+  body.a11y-reduced-motion *::before,
+  body.a11y-reduced-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
   ::selection {
     background-color: rgba(7, 196, 175, 0.15);
   }

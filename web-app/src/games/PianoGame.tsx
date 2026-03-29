@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CameraView } from '../components/CameraView';
 import { SessionWrapper } from '../components/SessionWrapper';
@@ -6,6 +6,8 @@ import { useHandTracking, type HandResult, type Landmark } from '../hooks/useHan
 import { playNote } from '../utils/gameSounds';
 import { computeRomPerFinger, computeTremorFromHistory, computeSmoothnessFromHistory } from '../utils/landmarkFeatures';
 import type { SessionMetrics } from '../types/session';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { speak } from '../utils/voiceCoach';
 
 const HISTORY_SIZE = 30;
 
@@ -34,6 +36,7 @@ function isFingerExtended(landmarks: Landmark[], fingerIndex: number): boolean {
 }
 
 export function PianoGame() {
+  const { settings } = useAppSettings();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [mode, setMode] = useState<Mode>('free');
@@ -44,10 +47,12 @@ export function PianoGame() {
   const prevKeysRef = useRef<Set<string>>(new Set());
   const taskStartRef = useRef(0);
   const reactionRef = useRef<number | undefined>(undefined);
+  const [reactionMs, setReactionMs] = useState<number | null>(null);
   const historyRef = useRef<Landmark[][]>([]);
   const [taskSuccess, setTaskSuccess] = useState(false);
   const [melodyStep, setMelodyStep] = useState(0);
   const [melodyDone, setMelodyDone] = useState(false);
+  const lastSpokenStepRef = useRef(-1);
 
   const onResults = useCallback((results: HandResult[]) => {
     if (!results.length) { setPressedKeys(new Set()); setHandReady(false); return; }
@@ -64,10 +69,15 @@ export function PianoGame() {
         playNote(id, 150);
         if (mode === 'task-index' && id === 'C' && next.size === 1 && reactionRef.current == null) {
           reactionRef.current = Date.now() - taskStartRef.current;
+          setReactionMs(reactionRef.current);
           setTaskSuccess(true);
+          speak('Great index finger control.', settings.voiceCoaching);
         }
         if (mode === 'task-melody' && melodyStep < MELODY.length && MELODY[melodyStep] === id) {
-          if (reactionRef.current == null) reactionRef.current = Date.now() - taskStartRef.current;
+          if (reactionRef.current == null) {
+            reactionRef.current = Date.now() - taskStartRef.current;
+            setReactionMs(reactionRef.current);
+          }
           if (melodyStep + 1 >= MELODY.length) setMelodyDone(true);
           setMelodyStep((s) => s + 1);
         }
@@ -75,7 +85,7 @@ export function PianoGame() {
     });
     prevKeysRef.current = next;
     setPressedKeys(next);
-  }, [mode, melodyStep]);
+  }, [mode, melodyStep, settings.voiceCoaching]);
 
   useHandTracking({ videoRef, numHands: 1, onResults, enabled: videoReady });
 
@@ -85,7 +95,13 @@ export function PianoGame() {
     setMelodyStep(0);
     setMelodyDone(false);
     reactionRef.current = undefined;
-    taskStartRef.current = Date.now();
+    setReactionMs(null);
+    taskStartRef.current = new Date().getTime();
+    lastSpokenStepRef.current = -1;
+    if (settings.voiceCoaching) {
+      if (m === 'task-index') speak('Use index finger only.', true);
+      if (m === 'task-melody') speak('Play C E G E C.', true);
+    }
   };
 
   const handleKeyClick = useCallback((keyId: string) => {
@@ -94,15 +110,31 @@ export function PianoGame() {
     playNote(keyId, 150);
     if (mode === 'task-index' && keyId === 'C' && reactionRef.current == null) {
       reactionRef.current = Date.now() - taskStartRef.current;
+      setReactionMs(reactionRef.current);
       setTaskSuccess(true);
+      speak('Nice control.', settings.voiceCoaching);
     }
     if (mode === 'task-melody' && melodyStep < MELODY.length && MELODY[melodyStep] === keyId) {
-      if (reactionRef.current == null) reactionRef.current = Date.now() - taskStartRef.current;
+      if (reactionRef.current == null) {
+        reactionRef.current = Date.now() - taskStartRef.current;
+        setReactionMs(reactionRef.current);
+      }
       if (melodyStep + 1 >= MELODY.length) setMelodyDone(true);
       setMelodyStep((s) => s + 1);
     }
     setTimeout(() => setTouchKeys((prev) => { const n = new Set(prev); n.delete(keyId); return n; }), 200);
-  }, [mode, melodyStep]);
+  }, [mode, melodyStep, settings.voiceCoaching]);
+
+  useEffect(() => {
+    if (!settings.voiceCoaching || mode !== 'task-melody' || melodyStep === lastSpokenStepRef.current) return;
+    lastSpokenStepRef.current = melodyStep;
+    if (melodyStep > 0 && melodyStep < MELODY.length) {
+      speak(`Good. Next ${MELODY[melodyStep]}.`, true);
+    }
+    if (melodyDone) {
+      speak('Melody complete.', true);
+    }
+  }, [settings.voiceCoaching, mode, melodyStep, melodyDone]);
 
   const displayed = new Set([...pressedKeys, ...touchKeys]);
 
@@ -151,7 +183,7 @@ export function PianoGame() {
           <div className={`card p-3 mb-4 ${taskSuccess ? 'border-primary-300 bg-primary-50' : 'border-accent-200 bg-accent-50'}`}>
             <p className="text-sm font-medium text-warm-800">
               {taskSuccess
-                ? `✓ Correct! Reaction: ${reactionRef.current ?? 0} ms`
+                ? `✓ Correct! Reaction: ${reactionMs ?? 0} ms`
                 : 'Press only your index finger (key C)'}
             </p>
           </div>
@@ -160,7 +192,7 @@ export function PianoGame() {
           <div className={`card p-3 mb-4 ${melodyDone ? 'border-primary-300 bg-primary-50' : 'border-accent-200 bg-accent-50'}`}>
             <p className="text-sm font-medium text-warm-800">
               {melodyDone
-                ? `✓ Melody complete! Reaction: ${reactionRef.current ?? 0} ms`
+                ? `✓ Melody complete! Reaction: ${reactionMs ?? 0} ms`
                 : `Play: C → E → G → E → C  |  Next: ${melodyStep < MELODY.length ? MELODY[melodyStep] : '—'}`}
             </p>
           </div>

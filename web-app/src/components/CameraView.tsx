@@ -17,8 +17,8 @@ export function CameraView({ onVideoReady, className = '', mirrored = true, chil
   useEffect(() => {
     let stream: MediaStream | null = null;
     let cancelled = false;
-    const video = videoRef.current;
-    if (!video) return;
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
 
     (async () => {
       try {
@@ -28,9 +28,9 @@ export function CameraView({ onVideoReady, className = '', mirrored = true, chil
           video: { facingMode: 'user', width: 640, height: 480 },
         });
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
-        video.srcObject = stream;
-        await video.play();
-        if (!cancelled) cbRef.current?.(video);
+        videoEl.srcObject = stream;
+        await videoEl.play();
+        if (!cancelled) cbRef.current?.(videoEl);
       } catch (e) {
         if (cancelled) return;
         if (e instanceof Error && e.message.includes('interrupt')) return;
@@ -43,7 +43,7 @@ export function CameraView({ onVideoReady, className = '', mirrored = true, chil
     return () => {
       cancelled = true;
       stream?.getTracks().forEach(t => t.stop());
-      if (videoRef.current) videoRef.current.srcObject = null;
+      videoEl.srcObject = null;
       cbRef.current?.(null);
     };
   }, []);

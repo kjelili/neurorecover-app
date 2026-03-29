@@ -15,7 +15,11 @@ NeuroRecover turns repetitive physiotherapy into adaptive games using your devic
 
 - Three exercises: Virtual Piano, Bubble Pop, Cup Grasp
 - Session history with weekly goals and streak tracking
-- Progress charts and PDF session export
+- Progress charts and PDF/CSV/JSON export + backup import
+- Quality scoring, therapist notes, and recovery recommendations
+- Accessibility settings (large text, high contrast, reduced motion, voice coaching)
+- Local multi-profile mode and therapist clinical tools (protocol templates + assessments)
+- Therapist export bundle per active profile (JSON)
 - Local-first privacy model (all data in browser storage)
 
 ## Local development

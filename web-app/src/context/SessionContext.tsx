@@ -1,5 +1,6 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
-import type { GameType, SessionMetrics, SessionSummary } from '../types/session';
+import type { GameType, SessionAnnotations, SessionMetrics, SessionSummary } from '../types/session';
 
 interface SessionContextValue {
   sessionActive: boolean;
@@ -7,8 +8,9 @@ interface SessionContextValue {
   durationSeconds: number;
   elapsedSeconds: number;
   startSession: (game: GameType, durationSeconds?: number) => void;
-  endSession: (partial: { metrics: SessionMetrics }) => void;
+  endSession: (partial: { metrics: SessionMetrics; annotations?: SessionAnnotations }) => void;
   setGetCurrentMetrics: (fn: (() => SessionMetrics) | null) => void;
+  setGetCurrentAnnotations: (fn: (() => SessionAnnotations | undefined) | null) => void;
   lastCompletedSummary: SessionSummary | null;
   clearLastCompleted: () => void;
   onSessionComplete: ((summary: SessionSummary) => void) | null;
@@ -33,11 +35,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [pauseEndsAt, setPauseEndsAt] = useState(0);
   const [pauseRemainingSeconds, setPauseRemainingSeconds] = useState(0);
   const getCurrentMetricsRef = useRef<(() => SessionMetrics) | null>(null);
+  const getCurrentAnnotationsRef = useRef<(() => SessionAnnotations | undefined) | null>(null);
   const startedAtRef = useRef(0);
   const elapsedAtPauseRef = useRef(0);
 
   const setGetCurrentMetrics = useCallback((fn: (() => SessionMetrics) | null) => {
     getCurrentMetricsRef.current = fn;
+  }, []);
+
+  const setGetCurrentAnnotations = useCallback((fn: (() => SessionAnnotations | undefined) | null) => {
+    getCurrentAnnotationsRef.current = fn;
   }, []);
 
   const startSession = useCallback((g: GameType, duration?: number) => {
@@ -66,7 +73,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setPauseRemainingSeconds(0);
   }, []);
 
-  const endSession = useCallback((partial: { metrics: SessionMetrics }) => {
+  const endSession = useCallback((partial: { metrics: SessionMetrics; annotations?: SessionAnnotations }) => {
     if (!game || !sessionActive) return;
     const endedAt = Date.now();
     const summary: SessionSummary = {
@@ -75,6 +82,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       endedAt,
       durationSeconds: Math.round((endedAt - startedAt) / 1000),
       metrics: partial.metrics,
+      annotations: partial.annotations,
     };
     setSessionActive(false);
     setGame(null);
@@ -100,6 +108,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (elapsed >= durationSeconds) {
         const g = game;
         const metrics = getCurrentMetricsRef.current?.() ?? {};
+        const annotations = getCurrentAnnotationsRef.current?.();
         setSessionActive(false);
         setGame(null);
         setElapsedSeconds(0);
@@ -109,6 +118,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             game: g, startedAt, endedAt,
             durationSeconds: Math.round((endedAt - startedAt) / 1000),
             metrics,
+            annotations,
           };
           setLastCompletedSummary(summary);
           onSessionComplete?.(summary);
@@ -122,6 +132,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     <SessionContext.Provider value={{
       sessionActive, game, durationSeconds, elapsedSeconds,
       startSession, endSession, setGetCurrentMetrics,
+      setGetCurrentAnnotations,
       lastCompletedSummary, clearLastCompleted,
       onSessionComplete, setOnSessionComplete,
       isPaused, pauseRemainingSeconds, startPause,

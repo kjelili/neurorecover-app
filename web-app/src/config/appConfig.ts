@@ -66,7 +66,7 @@ export const defaultAppConfig: AppConfig = {
   ],
 };
 
-let config: AppConfig = defaultAppConfig;
+const config: AppConfig = defaultAppConfig;
 
 export function getAppConfig(): AppConfig {
   return config;
