@@ -1,12 +1,16 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { SessionProvider } from './context/SessionContext';
 import { AppSettingsProvider } from './context/AppSettingsContext';
+import { useAppSettings } from './context/AppSettingsContext';
 import { LandingPage } from './pages/LandingPage';
 import { AppShell } from './layout/AppShell';
 import { Dashboard } from './pages/Dashboard';
 import { Settings } from './pages/Settings';
 import { ClinicalTools } from './pages/ClinicalTools';
+import { Onboarding } from './pages/Onboarding';
+import { AdminConsole } from './pages/AdminConsole';
+import { ClinicalEvidence } from './pages/ClinicalEvidence';
 
 const Progress = lazy(() => import('./pages/Progress').then(m => ({ default: m.Progress })));
 const PianoGame = lazy(() => import('./games/PianoGame').then(m => ({ default: m.PianoGame })));
@@ -36,6 +40,14 @@ function NotFound() {
 }
 
 function App() {
+  function GuardedAppShell() {
+    const { settings } = useAppSettings();
+    if (!settings.onboardingCompleted || !settings.consentAccepted) {
+      return <Navigate to="/onboarding" replace />;
+    }
+    return <AppShell />;
+  }
+
   return (
     <AppSettingsProvider>
       <SessionProvider>
@@ -43,11 +55,14 @@ function App() {
           <Suspense fallback={<Loading />}>
             <Routes>
               <Route path="/" element={<LandingPage />} />
-              <Route path="/app" element={<AppShell />}>
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/app" element={<GuardedAppShell />}>
                 <Route index element={<Dashboard />} />
                 <Route path="progress" element={<Progress />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="clinical" element={<ClinicalTools />} />
+                <Route path="admin" element={<AdminConsole />} />
+                <Route path="evidence" element={<ClinicalEvidence />} />
                 <Route path="piano" element={<PianoGame />} />
                 <Route path="bubbles" element={<BubbleGame />} />
                 <Route path="grab-cup" element={<GrabCupGame />} />

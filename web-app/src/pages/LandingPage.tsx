@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { t } from '../utils/i18n';
 
 const FEATURES = [
   {
@@ -34,6 +36,7 @@ const FEATURES = [
 ];
 
 export function LandingPage() {
+  const { settings } = useAppSettings();
   return (
     <div className="min-h-screen bg-warm-50 text-warm-950 overflow-x-hidden">
       {/* Nav */}
@@ -46,7 +49,7 @@ export function LandingPage() {
             <span className="font-display font-bold text-xl text-warm-900">NeuroRecover</span>
           </div>
           <Link to="/app" className="btn-primary text-sm px-5 py-2.5">
-            Open App
+            {t(settings.language, 'landing.open')}
           </Link>
         </nav>
       </header>
@@ -56,13 +59,13 @@ export function LandingPage() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 rounded-full bg-primary-100 px-4 py-1.5 mb-6">
             <span className="w-2 h-2 rounded-full bg-primary-500" />
-            <span className="text-primary-800 text-sm font-semibold">Camera-based hand rehabilitation</span>
+            <span className="text-primary-800 text-sm font-semibold">{t(settings.language, 'landing.badge')}</span>
           </div>
 
           <h1 className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl text-warm-950 leading-[1.1] mb-6 tracking-tight">
-            Turn recovery into
+            {t(settings.language, 'landing.hero1')}
             <br />
-            <span className="text-primary-600">meaningful progress</span>
+            <span className="text-primary-600">{t(settings.language, 'landing.hero2')}</span>
           </h1>
 
           <p className="text-lg sm:text-xl text-warm-500 max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -72,10 +75,10 @@ export function LandingPage() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link to="/app" className="btn-primary text-base px-8 py-4 w-full sm:w-auto shadow-elevated">
-              Start your first session
+              {t(settings.language, 'landing.cta1')}
             </Link>
             <a href="#how-it-works" className="btn-secondary text-base px-8 py-4 w-full sm:w-auto">
-              See how it works
+              {t(settings.language, 'landing.cta2')}
             </a>
           </div>
 

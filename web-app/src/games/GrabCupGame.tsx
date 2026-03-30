@@ -7,6 +7,7 @@ import type { SessionMetrics } from '../types/session';
 import { playGrab } from '../utils/gameSounds';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { speak } from '../utils/voiceCoach';
+import { getSpeechLocale, t } from '../utils/i18n';
 
 function distLm(a: Landmark, b: Landmark) {
   return Math.hypot(a.x - b.x, a.y - b.y, (a.z ?? 0) - (b.z ?? 0));
@@ -22,6 +23,7 @@ function isFistClosed(lm: Landmark[]): boolean {
 
 export function GrabCupGame() {
   const { settings } = useAppSettings();
+  const speechLocale = getSpeechLocale(settings.language);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [grabbing, setGrabbing] = useState(false);
@@ -41,7 +43,7 @@ export function GrabCupGame() {
         holdStartRef.current = null;
         setScore((s) => {
           const next = s + 1;
-          if (next % 3 === 0) speak('Strong hold. Keep it steady.', settings.voiceCoaching);
+          if (next % 3 === 0) speak('Strong hold. Keep it steady.', settings.voiceCoaching, speechLocale);
           setHoldTargetMs((prev) => Math.max(1400, prev - 60));
           return next;
         });
@@ -54,22 +56,24 @@ export function GrabCupGame() {
       setGrabbing(false);
       setHoldProgress(0);
     }
-  }, [holdTargetMs, settings.voiceCoaching]);
+  }, [holdTargetMs, settings.voiceCoaching, speechLocale]);
 
   useHandTracking({ videoRef, numHands: 1, onResults, enabled: videoReady });
 
   const getCurrentMetrics = useCallback((): SessionMetrics => ({
     score,
     difficultyLevel: Math.round((2200 - holdTargetMs) / 80),
-  }), [score, holdTargetMs]);
+    cameraQualityScore: videoReady ? 75 : 30,
+    sessionIntegrity: videoReady ? 'ok' : 'low-tracking',
+  }), [score, holdTargetMs, videoReady]);
 
   return (
     <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-5xl mx-auto w-full">
       <div className="mb-6">
         <Link to="/app" className="text-sm text-warm-400 hover:text-primary-600 transition-colors mb-1 inline-block">
-          ← Back to dashboard
+          ← {t(settings.language, 'game.back')}
         </Link>
-        <h1 className="section-title">🥤 Cup Grasp</h1>
+        <h1 className="section-title">🥤 {t(settings.language, 'game.grab.title')}</h1>
       </div>
 
       <SessionWrapper game="grab-cup" getCurrentMetrics={getCurrentMetrics}>

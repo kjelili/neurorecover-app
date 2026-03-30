@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { AppSettings } from '../utils/appSettings';
 import { loadAppSettings, saveAppSettings } from '../utils/appSettings';
 import { ensureProfilesBootstrap, getActiveProfileId, setActiveProfileId } from '../utils/patientProfiles';
+import { applyRetentionPolicy, logAuditEvent } from '../utils/governance';
 
 interface AppSettingsContextValue {
   settings: AppSettings;
@@ -23,15 +24,23 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     saveAppSettings(settings);
     setActiveProfileId(settings.activeProfileId);
+    document.documentElement.lang = settings.language || 'en';
     document.body.classList.toggle('a11y-high-contrast', settings.highContrast);
     document.body.classList.toggle('a11y-large-text', settings.largeText);
     document.body.classList.toggle('a11y-reduced-motion', settings.reducedMotion);
   }, [settings]);
 
+  useEffect(() => {
+    applyRetentionPolicy(settings.retentionDays);
+  }, [settings.retentionDays, settings.activeProfileId]);
+
   const value = useMemo<AppSettingsContextValue>(() => ({
     settings,
     updateSettings: (patch) => {
       if (patch.activeProfileId) setActiveProfileId(patch.activeProfileId);
+      if (patch.userRole && patch.userRole !== settings.userRole) {
+        logAuditEvent('role.changed', `Role changed to ${patch.userRole}.`);
+      }
       setSettings((prev) => ({ ...prev, ...patch }));
     },
   }), [settings]);

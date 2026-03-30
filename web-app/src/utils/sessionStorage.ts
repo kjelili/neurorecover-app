@@ -1,6 +1,6 @@
 import type { SessionSummary, StoredSession } from '../types/session';
 import { SESSION_STORAGE_KEY, MAX_STORED_SESSIONS } from '../types/session';
-import { computeQualityScore } from './recoveryInsights';
+import { computeQualityScore, estimateCompensationRisk } from './recoveryInsights';
 import { getActiveProfileId } from './patientProfiles';
 
 const MAX_NOTES_LENGTH = 300;
@@ -26,6 +26,14 @@ export function saveSession(summary: SessionSummary | null | undefined): StoredS
   const metrics = {
     ...summary.metrics,
     qualityScore: summary.metrics.qualityScore ?? computeQualityScore(summary.metrics),
+    compensationRisk: summary.metrics.compensationRisk ?? estimateCompensationRisk(summary.metrics),
+    sessionIntegrity: summary.metrics.sessionIntegrity ?? (
+      summary.durationSeconds < 30
+        ? 'short-session'
+        : (summary.metrics.cameraQualityScore != null && summary.metrics.cameraQualityScore < 45)
+            ? 'low-tracking'
+            : 'ok'
+    ),
   };
   const notes = summary.annotations?.notes?.trim();
   const stored: StoredSession = {
@@ -67,6 +75,14 @@ export function getRecentSessions(limit = 20): StoredSession[] {
           metrics: {
             ...session.metrics,
             qualityScore: session.metrics.qualityScore ?? computeQualityScore(session.metrics),
+            compensationRisk: session.metrics.compensationRisk ?? estimateCompensationRisk(session.metrics),
+            sessionIntegrity: session.metrics.sessionIntegrity ?? (
+              session.durationSeconds < 30
+                ? 'short-session'
+                : (session.metrics.cameraQualityScore != null && session.metrics.cameraQualityScore < 45)
+                    ? 'low-tracking'
+                    : 'ok'
+            ),
           },
         };
       })
@@ -120,6 +136,25 @@ export function getTotalMinutes(): number {
 
 export function getAllSessions(): StoredSession[] {
   return getRecentSessions(MAX_STORED_SESSIONS);
+}
+
+export function removeSessionsOlderThan(cutoffTs: number): number {
+  try {
+    const sessions = getAllSessions();
+    const filtered = sessions.filter((s) => s.endedAt >= cutoffTs);
+    localStorage.setItem(getScopedSessionStorageKey(), JSON.stringify(filtered));
+    return sessions.length - filtered.length;
+  } catch {
+    return 0;
+  }
+}
+
+export function clearAllSessionsForActiveProfile(): void {
+  try {
+    localStorage.setItem(getScopedSessionStorageKey(), JSON.stringify([]));
+  } catch {
+    // ignore
+  }
 }
 
 export function updateSessionAnnotations(

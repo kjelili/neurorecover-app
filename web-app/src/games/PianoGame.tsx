@@ -8,6 +8,7 @@ import { computeRomPerFinger, computeTremorFromHistory, computeSmoothnessFromHis
 import type { SessionMetrics } from '../types/session';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { speak } from '../utils/voiceCoach';
+import { getSpeechLocale, t } from '../utils/i18n';
 
 const HISTORY_SIZE = 30;
 
@@ -37,6 +38,7 @@ function isFingerExtended(landmarks: Landmark[], fingerIndex: number): boolean {
 
 export function PianoGame() {
   const { settings } = useAppSettings();
+  const speechLocale = getSpeechLocale(settings.language);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [mode, setMode] = useState<Mode>('free');
@@ -71,7 +73,7 @@ export function PianoGame() {
           reactionRef.current = Date.now() - taskStartRef.current;
           setReactionMs(reactionRef.current);
           setTaskSuccess(true);
-          speak('Great index finger control.', settings.voiceCoaching);
+          speak('Great index finger control.', settings.voiceCoaching, speechLocale);
         }
         if (mode === 'task-melody' && melodyStep < MELODY.length && MELODY[melodyStep] === id) {
           if (reactionRef.current == null) {
@@ -85,7 +87,7 @@ export function PianoGame() {
     });
     prevKeysRef.current = next;
     setPressedKeys(next);
-  }, [mode, melodyStep, settings.voiceCoaching]);
+  }, [mode, melodyStep, settings.voiceCoaching, speechLocale]);
 
   useHandTracking({ videoRef, numHands: 1, onResults, enabled: videoReady });
 
@@ -99,8 +101,8 @@ export function PianoGame() {
     taskStartRef.current = new Date().getTime();
     lastSpokenStepRef.current = -1;
     if (settings.voiceCoaching) {
-      if (m === 'task-index') speak('Use index finger only.', true);
-      if (m === 'task-melody') speak('Play C E G E C.', true);
+      if (m === 'task-index') speak('Use index finger only.', true, speechLocale);
+      if (m === 'task-melody') speak('Play C E G E C.', true, speechLocale);
     }
   };
 
@@ -112,7 +114,7 @@ export function PianoGame() {
       reactionRef.current = Date.now() - taskStartRef.current;
       setReactionMs(reactionRef.current);
       setTaskSuccess(true);
-      speak('Nice control.', settings.voiceCoaching);
+      speak('Nice control.', settings.voiceCoaching, speechLocale);
     }
     if (mode === 'task-melody' && melodyStep < MELODY.length && MELODY[melodyStep] === keyId) {
       if (reactionRef.current == null) {
@@ -123,18 +125,18 @@ export function PianoGame() {
       setMelodyStep((s) => s + 1);
     }
     setTimeout(() => setTouchKeys((prev) => { const n = new Set(prev); n.delete(keyId); return n; }), 200);
-  }, [mode, melodyStep, settings.voiceCoaching]);
+  }, [mode, melodyStep, settings.voiceCoaching, speechLocale]);
 
   useEffect(() => {
     if (!settings.voiceCoaching || mode !== 'task-melody' || melodyStep === lastSpokenStepRef.current) return;
     lastSpokenStepRef.current = melodyStep;
     if (melodyStep > 0 && melodyStep < MELODY.length) {
-      speak(`Good. Next ${MELODY[melodyStep]}.`, true);
+      speak(`Good. Next ${MELODY[melodyStep]}.`, true, speechLocale);
     }
     if (melodyDone) {
-      speak('Melody complete.', true);
+      speak('Melody complete.', true, speechLocale);
     }
-  }, [settings.voiceCoaching, mode, melodyStep, melodyDone]);
+  }, [settings.voiceCoaching, mode, melodyStep, melodyDone, speechLocale]);
 
   const displayed = new Set([...pressedKeys, ...touchKeys]);
 
@@ -142,30 +144,33 @@ export function PianoGame() {
     const h = historyRef.current;
     const last = h.length ? h[h.length - 1] : null;
     const rom = last ? computeRomPerFinger(last) : undefined;
+    const cameraQualityScore = handReady ? Math.min(100, 45 + h.length * 2) : 35;
     return {
       score: countRef.current,
       reactionTimeMs: reactionRef.current,
       romPerFinger: rom?.some((v) => v > 0) ? rom : undefined,
       tremorEstimate: h.length >= 5 ? computeTremorFromHistory(h) : undefined,
       smoothnessEstimate: h.length >= 4 ? computeSmoothnessFromHistory(h) : undefined,
+      cameraQualityScore,
+      sessionIntegrity: cameraQualityScore < 45 ? 'low-tracking' : 'ok',
     };
-  }, []);
+  }, [handReady]);
 
   return (
     <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-5xl mx-auto w-full">
       <div className="flex items-center justify-between mb-6">
         <div>
           <Link to="/app" className="text-sm text-warm-400 hover:text-primary-600 transition-colors mb-1 inline-block">
-            ← Back to dashboard
+            ← {t(settings.language, 'game.back')}
           </Link>
-          <h1 className="section-title">🎹 Virtual Piano</h1>
+          <h1 className="section-title">🎹 {t(settings.language, 'game.piano.title')}</h1>
         </div>
       </div>
 
       <SessionWrapper game="piano" getCurrentMetrics={getCurrentMetrics}>
         {/* Mode selector */}
         <div className="flex flex-wrap gap-2 mb-4">
-          {([['free', 'Free play'], ['task-index', 'Index finger only'], ['task-melody', '5-note melody']] as const).map(([m, label]) => (
+          {([['free', t(settings.language, 'game.piano.free')], ['task-index', t(settings.language, 'game.piano.index')], ['task-melody', t(settings.language, 'game.piano.melody')]] as const).map(([m, label]) => (
             <button
               key={m}
               type="button"

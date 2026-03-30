@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppSettings } from '../context/AppSettingsContext';
-import { getLastSession } from '../utils/sessionStorage';
+import { clearAllSessionsForActiveProfile, getLastSession } from '../utils/sessionStorage';
 import { createProfile, deleteProfile, getProfiles, renameProfile } from '../utils/patientProfiles';
+import { applyRetentionPolicy, logAuditEvent } from '../utils/governance';
+import { clearAssessmentsForActiveProfile } from '../utils/clinicalTools';
+import { LANGUAGE_OPTIONS, t } from '../utils/i18n';
 
 function Toggle({
   label,
@@ -61,7 +64,25 @@ export function Settings() {
           <Link to="/app" className="text-sm text-warm-400 hover:text-primary-600 transition-colors mb-1 inline-block">
             ← Back to dashboard
           </Link>
-          <h1 className="section-title">Settings</h1>
+          <h1 className="section-title">{t(settings.language, 'settings.title')}</h1>
+        </div>
+
+        <div className="card p-5 mb-6">
+          <h2 className="font-display font-semibold text-warm-800 mb-4">{t(settings.language, 'settings.language')}</h2>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <label className="text-sm text-warm-500">
+              {t(settings.language, 'settings.language')}
+              <select
+                className="input-field mt-1"
+                value={settings.language}
+                onChange={(e) => updateSettings({ language: e.target.value })}
+              >
+                {LANGUAGE_OPTIONS.map((opt) => (
+                  <option key={opt.code} value={opt.code}>{opt.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
         <div className="card p-5 mb-6">
@@ -170,6 +191,18 @@ export function Settings() {
               />
             </label>
             <label className="text-sm text-warm-500">
+              User role
+              <select
+                value={settings.userRole}
+                onChange={(e) => updateSettings({ userRole: e.target.value as typeof settings.userRole, therapistMode: e.target.value !== 'patient' })}
+                className="input-field mt-1"
+              >
+                <option value="patient">Patient</option>
+                <option value="therapist">Therapist</option>
+                <option value="admin">Clinic Admin</option>
+              </select>
+            </label>
+            <label className="text-sm text-warm-500">
               Weekly goal (sessions)
               <input
                 type="number"
@@ -225,8 +258,14 @@ export function Settings() {
             <Toggle
               label="Therapist mode"
               checked={settings.therapistMode}
-              onChange={(v) => updateSettings({ therapistMode: v })}
+              onChange={(v) => updateSettings({ therapistMode: v, userRole: v ? settings.userRole : 'patient' })}
               description="Enable therapist-oriented notes and review workflows."
+            />
+            <Toggle
+              label={t(settings.language, 'settings.voiceActions')}
+              checked={settings.voiceActionsEnabled}
+              onChange={(v) => updateSettings({ voiceActionsEnabled: v })}
+              description={t(settings.language, 'settings.voiceActionsDesc')}
             />
           </div>
           <label className="text-sm text-warm-500">
@@ -247,6 +286,57 @@ export function Settings() {
             {last && <p className="text-xs text-warm-400">Last session: {new Date(last.endedAt).toLocaleString()}</p>}
           </div>
           {toast && <p className="text-sm text-warm-500 mt-2">{toast}</p>}
+        </div>
+
+        <div className="card p-5 mb-6">
+          <h2 className="font-display font-semibold text-warm-800 mb-4">Governance and data controls</h2>
+          <div className="grid sm:grid-cols-2 gap-4 mb-3">
+            <label className="text-sm text-warm-500">
+              Retention policy (days)
+              <input
+                type="number"
+                min={7}
+                max={3650}
+                value={settings.retentionDays}
+                onChange={(e) => updateSettings({ retentionDays: Math.max(7, Math.min(3650, Number(e.target.value) || 365)) })}
+                className="input-field mt-1"
+              />
+            </label>
+            <Toggle
+              label="Consent acknowledged"
+              checked={settings.consentAccepted}
+              onChange={(v) => {
+                updateSettings({ consentAccepted: v });
+                if (v) logAuditEvent('consent.accepted', 'Consent acknowledged in settings.');
+              }}
+              description="Required for continuing app use in healthcare workflows."
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              onClick={() => {
+                const res = applyRetentionPolicy(settings.retentionDays);
+                setToast(`Retention applied. Removed ${res.sessionsRemoved} sessions and ${res.assessmentsRemoved} assessments.`);
+              }}
+            >
+              Run retention now
+            </button>
+            <button
+              type="button"
+              className="btn-ghost text-sm text-red-600"
+              onClick={() => {
+                clearAllSessionsForActiveProfile();
+                clearAssessmentsForActiveProfile();
+                logAuditEvent('data.retention.purge', 'Manual clear data for active profile.');
+                setToast('Active profile data cleared.');
+              }}
+            >
+              Clear active profile data
+            </button>
+            {settings.userRole === 'admin' && <Link to="/app/admin" className="btn-ghost text-sm">Open admin console</Link>}
+          </div>
         </div>
       </div>
     </div>

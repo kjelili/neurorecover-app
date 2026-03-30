@@ -1,32 +1,46 @@
-import { Outlet, Link, NavLink } from 'react-router-dom';
+import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
 import { useSessionOptional } from '../context/SessionContext';
 import { SessionCompleteScreen } from '../components/SessionWrapper';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getLastSession } from '../utils/sessionStorage';
 import { useEffect, useState } from 'react';
+import { LANGUAGE_OPTIONS, getSpeechLocale, t } from '../utils/i18n';
+import { useVoiceActions } from '../hooks/useVoiceActions';
 
 const BASE_NAV_ITEMS = [
-  { to: '/app', label: 'Dashboard', end: true },
-  { to: '/app/piano', label: '🎹 Piano', end: false },
-  { to: '/app/bubbles', label: '🫧 Bubbles', end: false },
-  { to: '/app/grab-cup', label: '🥤 Grasp', end: false },
-  { to: '/app/progress', label: 'Progress', end: false },
-  { to: '/app/settings', label: 'Settings', end: false },
+  { to: '/app', labelKey: 'nav.dashboard', icon: '', end: true },
+  { to: '/app/piano', labelKey: 'nav.piano', icon: '🎹', end: false },
+  { to: '/app/bubbles', labelKey: 'nav.bubbles', icon: '🫧', end: false },
+  { to: '/app/grab-cup', labelKey: 'nav.grasp', icon: '🥤', end: false },
+  { to: '/app/progress', labelKey: 'nav.progress', icon: '', end: false },
+  { to: '/app/settings', labelKey: 'nav.settings', icon: '', end: false },
+  { to: '/app/evidence', labelKey: 'nav.evidence', icon: '', end: false },
 ];
 
 export function AppShell() {
+  const navigate = useNavigate();
   const session = useSessionOptional();
-  const { settings } = useAppSettings();
+  const { settings, updateSettings } = useAppSettings();
   const [nowTs, setNowTs] = useState(() => new Date().getTime());
+  const speechLocale = getSpeechLocale(settings.language);
+  const [voiceState, startVoice, stopVoice] = useVoiceActions(
+    navigate,
+    settings.voiceActionsEnabled,
+    speechLocale,
+  );
   const lastCompleted = session?.lastCompletedSummary;
   const clearLastCompleted = session?.clearLastCompleted;
   const last = getLastSession();
   const overdue = !last || (nowTs - last.endedAt > 1000 * 60 * 60 * 24);
   const currentHour = new Date(nowTs).getHours();
   const showReminder = settings.reminderEnabled && currentHour >= settings.reminderHour && overdue;
-  const navItems = settings.therapistMode
-    ? [...BASE_NAV_ITEMS, { to: '/app/clinical', label: 'Clinical', end: false }]
-    : BASE_NAV_ITEMS;
+  let navItems = [...BASE_NAV_ITEMS];
+  if (settings.therapistMode || settings.userRole !== 'patient') {
+    navItems = [...navItems, { to: '/app/clinical', labelKey: 'nav.clinical', icon: '', end: false }];
+  }
+  if (settings.userRole === 'admin') {
+    navItems = [...navItems, { to: '/app/admin', labelKey: 'nav.admin', icon: '', end: false }];
+  }
 
   useEffect(() => {
     const timer = setInterval(() => setNowTs(new Date().getTime()), 60_000);
@@ -53,7 +67,7 @@ export function AppShell() {
 
             {/* Nav */}
             <nav className="flex items-center gap-1 flex-1 overflow-x-auto scrollbar-hide" aria-label="Main">
-              {navItems.map(({ to, label, end }) => (
+              {navItems.map(({ to, labelKey, icon, end }) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -66,18 +80,40 @@ export function AppShell() {
                     }`
                   }
                 >
-                  {label}
+                  {icon ? `${icon} ` : ''}
+                  {t(settings.language, labelKey)}
                 </NavLink>
               ))}
             </nav>
 
             {/* Right actions */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              <label className="hidden md:flex items-center gap-1 text-xs text-warm-500">
+                {t(settings.language, 'lang.label')}
+                <select
+                  className="border border-warm-200 rounded px-1 py-0.5 bg-white"
+                  value={settings.language}
+                  onChange={(e) => updateSettings({ language: e.target.value })}
+                >
+                  {LANGUAGE_OPTIONS.map((opt) => (
+                    <option key={opt.code} value={opt.code}>{opt.label}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className={`btn-ghost text-xs ${voiceState.listening ? 'bg-primary-100 text-primary-700' : ''}`}
+                onClick={() => (voiceState.listening ? stopVoice() : startVoice())}
+                title={voiceState.supported ? '' : t(settings.language, 'voice.unsupported')}
+                disabled={!voiceState.supported || !settings.voiceActionsEnabled}
+              >
+                {voiceState.listening ? t(settings.language, 'voice.stop') : t(settings.language, 'voice.listen')}
+              </button>
               <Link
                 to="/"
                 className="text-xs text-warm-400 hover:text-primary-600 transition-colors hidden sm:block"
               >
-                About
+                {t(settings.language, 'nav.about')}
               </Link>
             </div>
           </div>
@@ -90,9 +126,16 @@ export function AppShell() {
           <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4">
             <div className="card p-3 border-accent-200 bg-accent-50">
               <p className="text-sm text-accent-900">
-                Daily reminder: a short rehab session today can help maintain your recovery progress.
+                {t(settings.language, 'reminder.daily')}
               </p>
             </div>
+          </div>
+        )}
+        {voiceState.lastHeard && (
+          <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-2">
+            <p className="text-xs text-warm-400">
+              {t(settings.language, 'voice.heard')}: "{voiceState.lastHeard}"
+            </p>
           </div>
         )}
         <Outlet />

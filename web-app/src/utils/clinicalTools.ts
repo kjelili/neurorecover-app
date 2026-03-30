@@ -6,6 +6,8 @@ import { loadAppSettings } from './appSettings';
 export interface ProtocolTemplate {
   id: string;
   name: string;
+  stage: 'acute' | 'subacute' | 'chronic';
+  targetProfile: 'low-rom' | 'high-tremor' | 'low-endurance' | 'balanced';
   focus: string;
   sessionMinutes: number;
   weeklySessions: number;
@@ -23,6 +25,10 @@ export interface ClinicalAssessment {
   postFatigue: number;
   fmaHandEstimate: number;
   aratEstimate: number;
+  malAmount: number;
+  malQuality: number;
+  promPainInterference: number;
+  promFatigue: number;
   notes: string;
 }
 
@@ -30,6 +36,8 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
   {
     id: 'control-foundation',
     name: 'Control Foundation',
+    stage: 'subacute',
+    targetProfile: 'high-tremor',
     focus: 'Improve smoothness and finger isolation with low fatigue load.',
     sessionMinutes: 10,
     weeklySessions: 4,
@@ -42,6 +50,8 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
   {
     id: 'reach-and-precision',
     name: 'Reach and Precision',
+    stage: 'subacute',
+    targetProfile: 'low-rom',
     focus: 'Increase reach accuracy and controlled pinch response.',
     sessionMinutes: 12,
     weeklySessions: 4,
@@ -54,6 +64,8 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
   {
     id: 'grip-endurance',
     name: 'Grip Endurance',
+    stage: 'chronic',
+    targetProfile: 'low-endurance',
     focus: 'Build sustained hand closure and ADL-ready endurance.',
     sessionMinutes: 12,
     weeklySessions: 5,
@@ -61,6 +73,20 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
       { game: 'grab-cup', minutes: 6 },
       { game: 'piano', minutes: 3 },
       { game: 'bubbles', minutes: 3 },
+    ],
+  },
+  {
+    id: 'acute-baseline',
+    name: 'Acute Baseline',
+    stage: 'acute',
+    targetProfile: 'balanced',
+    focus: 'Very low-load consistency and safe initiation in early recovery stage.',
+    sessionMinutes: 8,
+    weeklySessions: 3,
+    breakdown: [
+      { game: 'piano', minutes: 3 },
+      { game: 'bubbles', minutes: 2 },
+      { game: 'grab-cup', minutes: 3 },
     ],
   },
 ];
@@ -78,6 +104,16 @@ export function getAssessments(limit = 40): ClinicalAssessment[] {
         if (!a || typeof a !== 'object') return false;
         const x = a as ClinicalAssessment;
         return typeof x.id === 'string' && typeof x.createdAt === 'number' && typeof x.protocolId === 'string';
+      })
+      .map((a) => {
+        const item = a as ClinicalAssessment;
+        return {
+          ...item,
+          malAmount: item.malAmount ?? 0,
+          malQuality: item.malQuality ?? 0,
+          promPainInterference: item.promPainInterference ?? 0,
+          promFatigue: item.promFatigue ?? 0,
+        };
       })
       .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, limit);
@@ -102,6 +138,25 @@ export function saveAssessment(
     // ignore
   }
   return next;
+}
+
+export function removeAssessmentsOlderThan(cutoffTs: number): number {
+  const list = getAssessments(400);
+  const filtered = list.filter((a) => a.createdAt >= cutoffTs);
+  try {
+    localStorage.setItem(getAssessmentsKey(), JSON.stringify(filtered));
+    return list.length - filtered.length;
+  } catch {
+    return 0;
+  }
+}
+
+export function clearAssessmentsForActiveProfile(): void {
+  try {
+    localStorage.setItem(getAssessmentsKey(), JSON.stringify([]));
+  } catch {
+    // ignore
+  }
 }
 
 export interface TherapistExportBundle {

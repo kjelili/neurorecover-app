@@ -81,8 +81,10 @@ Enable Therapist Mode in Settings to access:
 
 - Protocol templates (control foundation, reach/precision, grip endurance)
 - Structured assessment form (pain/fatigue pre-post, FMA-hand estimate, ARAT estimate)
+- Standardized outcomes extension (MAL amount/quality, PROMIS pain/fatigue)
 - Per-profile clinical assessment history
 - One-click therapist export bundle (sessions + assessments + profile metadata as JSON)
+- Clinician report PDF and FHIR-like export for interoperability workflows
 
 Use profile switching to separate data for each patient on shared clinic devices.
 

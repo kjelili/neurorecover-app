@@ -13,8 +13,9 @@ This guide helps patients, caregivers, and therapists use NeuroRecover safely an
 ## 2) Open the app
 
 1. Open the NeuroRecover URL in your browser.
-2. Click **Allow** when the browser asks for camera permission.
-3. From the landing page, open the main app dashboard.
+2. Complete the onboarding flow (name, role, consent).
+3. Click **Allow** when the browser asks for camera permission.
+4. From the landing page, open the main app dashboard.
 
 If camera permission was blocked, open browser site settings and re-enable camera access.
 
@@ -84,6 +85,21 @@ Open Settings from the app navigation to configure:
 - Large text mode
 - Reduced motion mode
 - Voice coaching prompts
+- Data retention days and consent controls
+
+## 5.4) Multilingual and voice actions
+
+- Change app language in header selector or Settings.
+- Voice command button is in the app header.
+- You can say commands like:
+  - "open piano"
+  - "open progress"
+  - "open settings"
+  - "start session"
+  - "pause session"
+  - "end session"
+
+For full details, see `docs/MULTILINGUAL_AND_VOICE.md`.
 
 ## 5.3) Multi-profile mode
 
@@ -97,6 +113,7 @@ In Settings, you can manage local patient profiles:
 Each profile keeps its own sessions, progress charts, backups, and clinical assessments locally.
 
 When Therapist Mode is enabled, the Clinical Tools page includes a one-click therapist bundle export (JSON) for the active profile.
+You can also export a FHIR-like interoperability bundle and clinician report PDF.
 
 ## 6) Data and privacy
 

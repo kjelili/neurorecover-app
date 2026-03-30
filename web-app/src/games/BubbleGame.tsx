@@ -7,6 +7,7 @@ import type { SessionMetrics } from '../types/session';
 import { playPop } from '../utils/gameSounds';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { speak } from '../utils/voiceCoach';
+import { getSpeechLocale, t } from '../utils/i18n';
 
 const ENCOURAGEMENTS = ['Nice pinch!', 'Great reach!', 'Keep going!', 'Well done!'];
 const COLORS = ['#07c4af', '#20e0c8', '#52f5dc', '#029e8f', '#f96b45', '#ff8a6b'];
@@ -24,6 +25,7 @@ function getPinch(lm: Landmark[]): { x: number; y: number } | null {
 
 export function BubbleGame() {
   const { settings } = useAppSettings();
+  const speechLocale = getSpeechLocale(settings.language);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
@@ -83,13 +85,13 @@ export function BubbleGame() {
       if (next % 4 === 0) {
         const msg = ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
         setEncouragement(msg);
-        speak(msg, settings.voiceCoaching);
+        speak(msg, settings.voiceCoaching, speechLocale);
         setTimeout(() => setEncouragement(null), 2000);
       }
       return next;
     });
     playPop();
-  }, [settings.voiceCoaching]);
+  }, [settings.voiceCoaching, speechLocale]);
 
   const onResults = useCallback((results: HandResult[]) => {
     if (!results.length) return;
@@ -104,15 +106,22 @@ export function BubbleGame() {
 
   useHandTracking({ videoRef, numHands: 1, onResults, enabled: videoReady });
 
-  const getCurrentMetrics = useCallback((): SessionMetrics => ({ score }), [score]);
+  const getCurrentMetrics = useCallback((): SessionMetrics => {
+    const cameraQualityScore = videoReady ? 75 : 30;
+    return {
+      score,
+      cameraQualityScore,
+      sessionIntegrity: cameraQualityScore < 45 ? 'low-tracking' : 'ok',
+    };
+  }, [score, videoReady]);
 
   return (
     <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-5xl mx-auto w-full">
       <div className="mb-6">
         <Link to="/app" className="text-sm text-warm-400 hover:text-primary-600 transition-colors mb-1 inline-block">
-          ← Back to dashboard
+          ← {t(settings.language, 'game.back')}
         </Link>
-        <h1 className="section-title">🫧 Bubble Pop</h1>
+        <h1 className="section-title">🫧 {t(settings.language, 'game.bubble.title')}</h1>
       </div>
 
       <SessionWrapper game="bubbles" getCurrentMetrics={getCurrentMetrics}>

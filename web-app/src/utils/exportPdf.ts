@@ -1,4 +1,5 @@
 import type { SessionSummary, StoredSession } from '../types/session';
+import type { ClinicalAssessment } from './clinicalTools';
 
 export async function exportSessionPdf(session: SessionSummary | StoredSession): Promise<void> {
   if (!session || typeof session.endedAt !== 'number') return;
@@ -74,4 +75,76 @@ export async function exportProgressPdf(sessions: StoredSession[]): Promise<void
   doc.setTextColor(120);
   doc.text('NeuroRecover — AI Hand Rehabilitation', CX, 285, { align: 'center' });
   doc.save('neurorecover-progress-report.pdf');
+}
+
+export async function exportClinicianReportPdf(
+  sessions: StoredSession[],
+  assessments: ClinicalAssessment[],
+  profileName: string,
+): Promise<void> {
+  const { jsPDF } = await import('jspdf');
+  const doc = new jsPDF();
+  const CX = 105;
+  const valid = sessions.filter((s) => s != null && typeof s.endedAt === 'number');
+  const recent = valid.slice(0, 10);
+  const qualityAvg = recent.length
+    ? Math.round(recent.reduce((a, s) => a + (s.metrics.qualityScore ?? 0), 0) / recent.length)
+    : 0;
+  const baseline = valid.slice(10, 25);
+  const baselineAvg = baseline.length
+    ? Math.round(baseline.reduce((a, s) => a + (s.metrics.qualityScore ?? 0), 0) / baseline.length)
+    : qualityAvg;
+
+  doc.setFontSize(22);
+  doc.setTextColor(7, 196, 175);
+  doc.text('NeuroRecover Clinician Report', CX, 18, { align: 'center' });
+  doc.setFontSize(11);
+  doc.setTextColor(80);
+  doc.text(`Profile: ${profileName}`, 14, 30);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 36);
+
+  let y = 48;
+  doc.setFontSize(12);
+  doc.setTextColor(30);
+  doc.text('Outcome summary', 14, y); y += 8;
+  doc.setFontSize(10);
+  doc.text(`Sessions recorded: ${valid.length}`, 14, y); y += 6;
+  doc.text(`Quality score (recent): ${qualityAvg}/100`, 14, y); y += 6;
+  doc.text(`Quality score (baseline): ${baselineAvg}/100`, 14, y); y += 6;
+  doc.text(`Delta: ${qualityAvg - baselineAvg >= 0 ? '+' : ''}${qualityAvg - baselineAvg}`, 14, y); y += 10;
+
+  doc.setFontSize(12);
+  doc.text('Recent assessments', 14, y); y += 8;
+  doc.setFontSize(10);
+  if (!assessments.length) {
+    doc.text('No assessments recorded.', 14, y); y += 6;
+  } else {
+    for (const a of assessments.slice(0, 6)) {
+      doc.text(`${new Date(a.createdAt).toLocaleDateString()} | FMA ${a.fmaHandEstimate}/14 | ARAT ${a.aratEstimate}/57 | MAL ${a.malAmount.toFixed(1)}/${a.malQuality.toFixed(1)}`, 14, y);
+      y += 6;
+      if (y > 270) { doc.addPage(); y = 20; }
+    }
+  }
+
+  y += 2;
+  doc.setFontSize(12);
+  doc.text('Risk flags', 14, y); y += 8;
+  doc.setFontSize(10);
+  const highPain = recent.some((s) => (s.annotations?.painLevel ?? 0) >= 6);
+  const lowTracking = recent.some((s) => (s.metrics.cameraQualityScore ?? 100) < 45);
+  const lowIntegrity = recent.some((s) => s.metrics.sessionIntegrity && s.metrics.sessionIntegrity !== 'ok');
+  const flags = [
+    highPain ? 'Elevated pain reported in recent sessions.' : 'No high pain flag in recent sessions.',
+    lowTracking ? 'Low camera tracking quality detected in recent sessions.' : 'No camera tracking risk detected.',
+    lowIntegrity ? 'Some sessions flagged for integrity review.' : 'Session integrity stable.',
+  ];
+  for (const flag of flags) {
+    doc.text(`- ${flag}`, 14, y);
+    y += 6;
+  }
+
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text('For clinical support use only. Not a standalone diagnostic instrument.', CX, 285, { align: 'center' });
+  doc.save(`neurorecover-clinician-report-${profileName.replace(/\s+/g, '-').toLowerCase() || 'profile'}.pdf`);
 }

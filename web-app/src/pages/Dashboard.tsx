@@ -4,9 +4,10 @@ import { getLastSession, getRecentSessions, getSessionsThisWeek, getCurrentStrea
 import { getEnabledGames } from '../config/appConfig';
 import type { StoredSession } from '../types/session';
 import { GAME_LABELS } from '../types/session';
-import { computeQualityScore, getRecoveryRecommendations } from '../utils/recoveryInsights';
+import { computeQualityScore, getRecoveryRecommendations, getRiskAlerts } from '../utils/recoveryInsights';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getActiveProfile } from '../utils/patientProfiles';
+import { t } from '../utils/i18n';
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -34,6 +35,7 @@ export function Dashboard() {
     ? Math.round(recentSessions.reduce((sum, s) => sum + (s.metrics.qualityScore ?? computeQualityScore(s.metrics)), 0) / recentSessions.length)
     : 0;
   const recommendations = getRecoveryRecommendations(recentSessions);
+  const riskAlerts = getRiskAlerts(recentSessions, weeklyGoal, sessionsThisWeek.length);
   const lastSessionDaysAgo = lastSession
     ? Math.floor((nowTs - lastSession.endedAt) / (1000 * 60 * 60 * 24))
     : null;
@@ -43,14 +45,20 @@ export function Dashboard() {
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="section-title mb-1">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}</h1>
+          <h1 className="section-title mb-1">
+            {new Date().getHours() < 12
+              ? t(settings.language, 'dash.greetingMorning')
+              : new Date().getHours() < 18
+                ? t(settings.language, 'dash.greetingAfternoon')
+                : t(settings.language, 'dash.greetingEvening')}
+          </h1>
           <p className="text-warm-500">
             {totalSessions === 0
-              ? 'Start your first exercise below to begin tracking your recovery.'
-              : `You've completed ${totalSessions} session${totalSessions !== 1 ? 's' : ''}. Keep going!`}
+              ? t(settings.language, 'dash.startFirst')
+              : t(settings.language, 'dash.completed', { count: totalSessions })}
           </p>
           <p className="text-sm text-primary-700 mt-1">
-            Active profile: {activeProfile.name}{settings.displayName ? ` • ${settings.displayName}` : ''}
+            {t(settings.language, 'common.activeProfile')}: {activeProfile.name}{settings.displayName ? ` • ${settings.displayName}` : ''}
           </p>
         </div>
 
@@ -66,6 +74,7 @@ export function Dashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="card p-4 sm:p-5">
             <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">This week</p>
+            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">{t(settings.language, 'dash.thisWeek')}</p>
             <div className="flex items-end gap-1">
               <span className={`font-display font-bold text-2xl ${sessionsThisWeek.length >= weeklyGoal ? 'text-green-600' : 'text-warm-800'}`}>
                 {sessionsThisWeek.length}
@@ -78,7 +87,7 @@ export function Dashboard() {
           </div>
 
           <div className="card p-4 sm:p-5">
-            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">Streak</p>
+            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">{t(settings.language, 'dash.streak')}</p>
             <div className="flex items-end gap-1">
               <span className="font-display font-bold text-2xl text-warm-800">{streak}</span>
               <span className="text-warm-400 text-sm mb-0.5">day{streak !== 1 ? 's' : ''}</span>
@@ -86,7 +95,7 @@ export function Dashboard() {
           </div>
 
           <div className="card p-4 sm:p-5">
-            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">Total time</p>
+            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">{t(settings.language, 'dash.totalTime')}</p>
             <div className="flex items-end gap-1">
               <span className="font-display font-bold text-2xl text-warm-800">{Math.round(totalMinutes)}</span>
               <span className="text-warm-400 text-sm mb-0.5">min</span>
@@ -94,7 +103,7 @@ export function Dashboard() {
           </div>
 
           <div className="card p-4 sm:p-5">
-            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">Sessions</p>
+            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">{t(settings.language, 'dash.sessions')}</p>
             <span className="font-display font-bold text-2xl text-warm-800">{totalSessions}</span>
           </div>
         </div>
@@ -116,7 +125,7 @@ export function Dashboard() {
 
         {/* Exercises grid */}
         <div className="mb-8">
-          <h2 className="font-display font-semibold text-lg text-warm-800 mb-4">Exercises</h2>
+          <h2 className="font-display font-semibold text-lg text-warm-800 mb-4">{t(settings.language, 'dash.exercises')}</h2>
           <div className="grid sm:grid-cols-3 gap-4">
             {games.map((game) => (
               <Link
@@ -130,7 +139,7 @@ export function Dashboard() {
                 </h3>
                 <p className="text-warm-400 text-sm leading-relaxed">{game.description}</p>
                 <div className="mt-4 flex items-center gap-1 text-primary-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span>Start exercise</span>
+                  <span>{t(settings.language, 'progress.goExercises')}</span>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
@@ -143,7 +152,7 @@ export function Dashboard() {
         {/* Last session */}
         {lastSession && typeof lastSession.endedAt === 'number' && (
           <div className="mb-8">
-            <h2 className="font-display font-semibold text-lg text-warm-800 mb-4">Last session</h2>
+            <h2 className="font-display font-semibold text-lg text-warm-800 mb-4">{t(settings.language, 'dash.lastSession')}</h2>
             <div className="card p-5 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center text-xl">
@@ -166,9 +175,9 @@ export function Dashboard() {
         {recentSessions.length > 1 && (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display font-semibold text-lg text-warm-800">Recent activity</h2>
+              <h2 className="font-display font-semibold text-lg text-warm-800">{t(settings.language, 'dash.recentActivity')}</h2>
               <Link to="/app/progress" className="text-sm text-primary-600 font-medium hover:text-primary-700">
-                View all →
+                {t(settings.language, 'dash.viewAll')} →
               </Link>
             </div>
             <div className="card overflow-hidden">
@@ -202,7 +211,7 @@ export function Dashboard() {
         </div>
 
         <div className="card p-5">
-          <h2 className="font-display font-semibold text-lg text-warm-800 mb-3">Recommended next steps</h2>
+          <h2 className="font-display font-semibold text-lg text-warm-800 mb-3">{t(settings.language, 'dash.recommendedNext')}</h2>
           <div className="space-y-3">
             {recommendations.map((rec) => (
               <div key={rec.title} className="border border-warm-200 rounded-xl p-3 bg-white">
@@ -220,6 +229,30 @@ export function Dashboard() {
                   </span>
                 </div>
                 <p className="text-sm text-warm-500">{rec.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card p-5 mt-8">
+          <h2 className="font-display font-semibold text-lg text-warm-800 mb-3">{t(settings.language, 'dash.riskAlerts')}</h2>
+          <div className="space-y-3">
+            {riskAlerts.map((alert) => (
+              <div key={alert.id} className="border border-warm-200 rounded-xl p-3 bg-white">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-semibold text-warm-800">{alert.title}</p>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    alert.severity === 'high'
+                      ? 'bg-red-100 text-red-700'
+                      : alert.severity === 'medium'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-green-100 text-green-700'
+                  }`}
+                  >
+                    {alert.severity}
+                  </span>
+                </div>
+                <p className="text-sm text-warm-500">{alert.detail}</p>
               </div>
             ))}
           </div>

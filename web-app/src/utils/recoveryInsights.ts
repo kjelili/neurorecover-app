@@ -45,6 +45,94 @@ export function computeQualityScore(metrics: SessionMetrics): number {
   return Math.round((components.reduce((a, b) => a + b, 0) / Math.max(0.01, usedWeight)) * 100);
 }
 
+export function estimateCompensationRisk(metrics: SessionMetrics): number {
+  const tremor = metrics.tremorEstimate ?? 0;
+  const smoothness = metrics.smoothnessEstimate ?? 0.5;
+  const romAvg = metrics.romPerFinger?.length ? mean(metrics.romPerFinger) : 0.5;
+  const score = metrics.score ?? 0;
+  const highSpeedLowControl = score > 18 && smoothness < 0.35;
+  let risk = 0;
+  risk += tremor * 0.45;
+  risk += (1 - smoothness) * 0.35;
+  risk += (romAvg < 0.3 ? 0.2 : 0);
+  if (highSpeedLowControl) risk += 0.15;
+  return Math.round(clamp01(risk) * 100);
+}
+
+export interface RiskAlert {
+  id: string;
+  severity: 'high' | 'medium' | 'low';
+  title: string;
+  detail: string;
+}
+
+export function getRiskAlerts(
+  sessions: StoredSession[],
+  weeklyGoal: number,
+  sessionsThisWeek: number,
+): RiskAlert[] {
+  if (!sessions.length) {
+    return [{
+      id: 'no-data',
+      severity: 'low',
+      title: 'No baseline yet',
+      detail: 'Complete 3 sessions to establish a baseline before risk monitoring.',
+    }];
+  }
+
+  const alerts: RiskAlert[] = [];
+  const recent = sessions.slice(0, 6);
+  const baseline = sessions.slice(6, 18);
+  const recentQuality = mean(recent.map((s) => s.metrics.qualityScore ?? computeQualityScore(s.metrics)));
+  const baselineQuality = baseline.length
+    ? mean(baseline.map((s) => s.metrics.qualityScore ?? computeQualityScore(s.metrics)))
+    : recentQuality;
+  const recentPain = mean(recent.map((s) => s.annotations?.painLevel ?? 0).filter((x) => x > 0));
+  const compensation = mean(recent.map((s) => s.metrics.compensationRisk ?? estimateCompensationRisk(s.metrics)));
+
+  if (recentQuality + 10 < baselineQuality) {
+    alerts.push({
+      id: 'quality-drop',
+      severity: 'high',
+      title: 'Quality trend declined',
+      detail: `Recent quality (${Math.round(recentQuality)}) is below baseline (${Math.round(baselineQuality)}).`,
+    });
+  }
+  if (recentPain >= 6) {
+    alerts.push({
+      id: 'pain-high',
+      severity: 'high',
+      title: 'Elevated pain reports',
+      detail: 'Recent pain check-ins are high. Consider reducing intensity and reviewing protocol.',
+    });
+  }
+  if (compensation >= 55) {
+    alerts.push({
+      id: 'compensation',
+      severity: 'medium',
+      title: 'Compensation risk rising',
+      detail: 'Movement pattern suggests control issues. Prioritize smoothness and slower guided tasks.',
+    });
+  }
+  if (sessionsThisWeek < weeklyGoal) {
+    alerts.push({
+      id: 'adherence',
+      severity: 'medium',
+      title: 'Adherence below weekly goal',
+      detail: `This week ${sessionsThisWeek}/${weeklyGoal} sessions completed.`,
+    });
+  }
+  if (!alerts.length) {
+    alerts.push({
+      id: 'stable',
+      severity: 'low',
+      title: 'Risk status stable',
+      detail: 'No major risk patterns detected from current trends.',
+    });
+  }
+  return alerts.slice(0, 4);
+}
+
 export interface RecoveryRecommendation {
   title: string;
   detail: string;

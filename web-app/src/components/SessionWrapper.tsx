@@ -4,6 +4,9 @@ import { saveSession } from '../utils/sessionStorage';
 import { computeQualityScore } from '../utils/recoveryInsights';
 import { useSession } from '../context/SessionContext';
 import { SESSION_DURATION_PRESETS, type DurationPreset } from '../config/appConfig';
+import { logAuditEvent } from '../utils/governance';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { t } from '../utils/i18n';
 
 interface SessionWrapperProps {
   game: GameType;
@@ -12,6 +15,7 @@ interface SessionWrapperProps {
 }
 
 export function SessionWrapper({ game, children, getCurrentMetrics }: SessionWrapperProps) {
+  const { settings } = useAppSettings();
   const {
     sessionActive, game: ctxGame, durationSeconds, elapsedSeconds,
     startSession, endSession, setOnSessionComplete, setGetCurrentMetrics, setGetCurrentAnnotations,
@@ -24,7 +28,10 @@ export function SessionWrapper({ game, children, getCurrentMetrics }: SessionWra
   const [notes, setNotes] = useState('');
 
   const handleComplete = useCallback((summary: SessionSummary | null | undefined) => {
-    if (summary != null && typeof summary.endedAt === 'number') saveSession(summary);
+    if (summary != null && typeof summary.endedAt === 'number') {
+      saveSession(summary);
+      logAuditEvent('session.save', `Session completed: ${summary.game}.`);
+    }
   }, []);
 
   useEffect(() => {
@@ -66,11 +73,31 @@ export function SessionWrapper({ game, children, getCurrentMetrics }: SessionWra
     });
   }, [endSession, getCurrentMetrics, painLevel, fatigueLevel, notes]);
 
+  useEffect(() => {
+    const onStart = () => {
+      if (!sessionActive || ctxGame !== game) handleStart();
+    };
+    const onEnd = () => {
+      if (sessionActive && ctxGame === game) handleEnd();
+    };
+    const onPause = () => {
+      if (sessionActive && ctxGame === game && !isPaused) startPause(60);
+    };
+    window.addEventListener('voice:start-session', onStart as EventListener);
+    window.addEventListener('voice:end-session', onEnd as EventListener);
+    window.addEventListener('voice:pause-session', onPause as EventListener);
+    return () => {
+      window.removeEventListener('voice:start-session', onStart as EventListener);
+      window.removeEventListener('voice:end-session', onEnd as EventListener);
+      window.removeEventListener('voice:pause-session', onPause as EventListener);
+    };
+  }, [sessionActive, ctxGame, game, isPaused, handleStart, handleEnd, startPause]);
+
   if (!sessionActive || ctxGame !== game) {
     return (
       <>
         <div className="mb-6">
-          <p className="text-sm text-warm-500 font-medium mb-3">Session length</p>
+          <p className="text-sm text-warm-500 font-medium mb-3">{t(settings.language, 'session.length')}</p>
           <div className="flex flex-wrap gap-2 mb-4">
             {(['short', 'standard', 'longer'] as const).map((p) => (
               <button
@@ -88,7 +115,7 @@ export function SessionWrapper({ game, children, getCurrentMetrics }: SessionWra
             ))}
           </div>
           <button type="button" onClick={handleStart} className="btn-primary w-full sm:w-auto">
-            Start {SESSION_DURATION_PRESETS[preset]}-minute session
+            {t(settings.language, 'session.startMinutes', { minutes: SESSION_DURATION_PRESETS[preset] })}
           </button>
         </div>
         {children}
@@ -120,24 +147,24 @@ export function SessionWrapper({ game, children, getCurrentMetrics }: SessionWra
           </div>
           {!isPaused && (
             <button type="button" onClick={() => startPause(60)} className="btn-ghost text-sm">
-              Pause 1 min
+              {t(settings.language, 'session.pause1')}
             </button>
           )}
           {isPaused && (
             <div className="badge bg-amber-100 text-amber-800">
-              Rest: {pauseRemainingSeconds}s
+              {t(settings.language, 'session.rest')}: {pauseRemainingSeconds}s
             </div>
           )}
           <button type="button" onClick={handleEnd} className="btn-ghost text-sm text-warm-500">
-            End session
+            {t(settings.language, 'session.end')}
           </button>
         </div>
       </div>
       <div className="card p-4 mb-6">
-        <p className="text-sm font-semibold text-warm-700 mb-3">Session check-in (optional)</p>
+        <p className="text-sm font-semibold text-warm-700 mb-3">{t(settings.language, 'session.checkin')}</p>
         <div className="grid sm:grid-cols-2 gap-4 mb-3">
           <label className="text-sm text-warm-500">
-            Pain level: <span className="font-semibold text-warm-700">{painLevel}/10</span>
+            {t(settings.language, 'session.painLevel')}: <span className="font-semibold text-warm-700">{painLevel}/10</span>
             <input
               type="range"
               min={0}
@@ -148,7 +175,7 @@ export function SessionWrapper({ game, children, getCurrentMetrics }: SessionWra
             />
           </label>
           <label className="text-sm text-warm-500">
-            Fatigue level: <span className="font-semibold text-warm-700">{fatigueLevel}/10</span>
+            {t(settings.language, 'session.fatigueLevel')}: <span className="font-semibold text-warm-700">{fatigueLevel}/10</span>
             <input
               type="range"
               min={0}
@@ -160,14 +187,21 @@ export function SessionWrapper({ game, children, getCurrentMetrics }: SessionWra
           </label>
         </div>
         <label className="text-sm text-warm-500">
-          Notes for therapist
+          {t(settings.language, 'session.notesTherapist')}
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value.slice(0, 300))}
-            placeholder="How did this session feel? (optional)"
+            placeholder={t(settings.language, 'session.notePlaceholder')}
             className="input-field mt-1 min-h-[88px]"
           />
         </label>
+        {(painLevel >= 7 || fatigueLevel >= 8) && (
+          <div className="mt-3 border border-red-200 bg-red-50 rounded-xl px-3 py-2">
+            <p className="text-xs text-red-700">
+              {t(settings.language, 'session.safetyHigh')}
+            </p>
+          </div>
+        )}
       </div>
       {children}
     </>
@@ -180,6 +214,7 @@ interface SessionCompleteScreenProps {
 }
 
 export function SessionCompleteScreen({ summary, onClose }: SessionCompleteScreenProps) {
+  const { settings } = useAppSettings();
   const { game, durationSeconds, metrics } = summary;
   const quality = metrics.qualityScore ?? computeQualityScore(metrics);
 
@@ -200,38 +235,38 @@ export function SessionCompleteScreen({ summary, onClose }: SessionCompleteScree
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="font-display font-bold text-2xl text-warm-950 mb-1">Well done!</h2>
-          <p className="text-primary-600 font-medium">Session complete</p>
+          <h2 className="font-display font-bold text-2xl text-warm-950 mb-1">{t(settings.language, 'session.completeTitle')}</h2>
+          <p className="text-primary-600 font-medium">{t(settings.language, 'session.completeSub')}</p>
         </div>
 
         <div className="space-y-3 mb-6">
           <div className="flex justify-between py-2 border-b border-warm-100">
-            <span className="text-warm-500">Exercise</span>
+            <span className="text-warm-500">{t(settings.language, 'session.exercise')}</span>
             <span className="font-semibold text-warm-800 capitalize">{game.replace(/-/g, ' ')}</span>
           </div>
           <div className="flex justify-between py-2 border-b border-warm-100">
-            <span className="text-warm-500">Duration</span>
+            <span className="text-warm-500">{t(settings.language, 'session.duration')}</span>
             <span className="font-semibold text-warm-800">{Math.floor(durationSeconds / 60)}m {durationSeconds % 60}s</span>
           </div>
           {metrics.score != null && (
             <div className="flex justify-between py-2 border-b border-warm-100">
-              <span className="text-warm-500">Score</span>
+              <span className="text-warm-500">{t(settings.language, 'session.score')}</span>
               <span className="font-bold text-primary-700 text-lg">{metrics.score}</span>
             </div>
           )}
           {metrics.reactionTimeMs != null && (
             <div className="flex justify-between py-2 border-b border-warm-100">
-              <span className="text-warm-500">Reaction time</span>
+              <span className="text-warm-500">{t(settings.language, 'session.reaction')}</span>
               <span className="font-semibold text-warm-800">{metrics.reactionTimeMs} ms</span>
             </div>
           )}
           <div className="flex justify-between py-2 border-b border-warm-100">
-            <span className="text-warm-500">Quality score</span>
+            <span className="text-warm-500">{t(settings.language, 'session.quality')}</span>
             <span className="font-semibold text-warm-800">{quality}/100</span>
           </div>
           {summary.annotations?.notes && (
             <div className="pt-2">
-              <p className="text-xs text-warm-400 mb-1">Session note</p>
+              <p className="text-xs text-warm-400 mb-1">{t(settings.language, 'session.note')}</p>
               <p className="text-sm text-warm-700 bg-warm-50 border border-warm-200 rounded-lg px-3 py-2">
                 {summary.annotations.notes}
               </p>
@@ -244,7 +279,7 @@ export function SessionCompleteScreen({ summary, onClose }: SessionCompleteScree
             Export PDF
           </button>
           <button type="button" onClick={onClose} className="btn-primary flex-1">
-            Done
+            {t(settings.language, 'session.done')}
           </button>
         </div>
       </div>

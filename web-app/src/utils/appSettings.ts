@@ -1,6 +1,12 @@
 export interface AppSettings {
   displayName: string;
   activeProfileId: string;
+  language: string;
+  voiceActionsEnabled: boolean;
+  userRole: 'patient' | 'therapist' | 'admin';
+  onboardingCompleted: boolean;
+  consentAccepted: boolean;
+  retentionDays: number;
   weeklyGoalSessions: number;
   therapistMode: boolean;
   highContrast: boolean;
@@ -16,6 +22,12 @@ const SETTINGS_KEY = 'neurorecover-settings-v1';
 export const defaultSettings: AppSettings = {
   displayName: '',
   activeProfileId: 'default-profile',
+  language: 'en',
+  voiceActionsEnabled: true,
+  userRole: 'patient',
+  onboardingCompleted: false,
+  consentAccepted: false,
+  retentionDays: 365,
   weeklyGoalSessions: 3,
   therapistMode: false,
   highContrast: false,
@@ -36,6 +48,7 @@ export function loadAppSettings(): AppSettings {
       ...parsed,
       weeklyGoalSessions: clamp(parsed.weeklyGoalSessions, 1, 14, defaultSettings.weeklyGoalSessions),
       reminderHour: clamp(parsed.reminderHour, 0, 23, defaultSettings.reminderHour),
+      retentionDays: clamp(parsed.retentionDays, 7, 3650, defaultSettings.retentionDays),
     };
   } catch {
     return defaultSettings;

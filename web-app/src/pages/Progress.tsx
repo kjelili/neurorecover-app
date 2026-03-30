@@ -14,8 +14,11 @@ import {
 import { exportProgressPdf } from '../utils/exportPdf';
 import { GAME_LABELS } from '../types/session';
 import type { StoredSession } from '../types/session';
-import { computeQualityScore } from '../utils/recoveryInsights';
+import { computeQualityScore, getRiskAlerts } from '../utils/recoveryInsights';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { getActiveProfile } from '../utils/patientProfiles';
+import { logAuditEvent } from '../utils/governance';
+import { t } from '../utils/i18n';
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -32,6 +35,7 @@ export function Progress() {
 
   const sessions = getRecentSessions(100);
   const valid = sessions.filter(s => s != null && typeof s.endedAt === 'number');
+  const profile = getActiveProfile();
   const totalMinutes = getTotalMinutes();
   const sessionsThisWeek = getSessionsThisWeek();
   const streak = getCurrentStreak();
@@ -62,6 +66,12 @@ export function Progress() {
     ? Math.round(valid.reduce((sum, s) => sum + (s.metrics.qualityScore ?? computeQualityScore(s.metrics)), 0) / valid.length)
     : 0;
 
+  const baselineQuality = valid.length > 12
+    ? Math.round(valid.slice(12, 30).reduce((sum, s) => sum + (s.metrics.qualityScore ?? computeQualityScore(s.metrics)), 0) / Math.max(1, valid.slice(12, 30).length))
+    : qualityTrend;
+  const qualityDelta = qualityTrend - baselineQuality;
+  const riskAlerts = getRiskAlerts(valid, settings.weeklyGoalSessions, sessionsThisWeek.length);
+
   const downloadTextFile = (filename: string, content: string, mime = 'text/plain') => {
     const blob = new Blob([content], { type: mime });
     const url = URL.createObjectURL(blob);
@@ -72,6 +82,7 @@ export function Progress() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    logAuditEvent('data.export', `Exported file ${filename}.`);
   };
 
   const startEdit = (session: StoredSession) => {
@@ -97,6 +108,7 @@ export function Progress() {
     const text = await file.text();
     const { imported, skipped } = importSessionsFromJson(text);
     setImportStatus(`Imported ${imported} session(s), skipped ${skipped}.`);
+    logAuditEvent('data.import', `Imported sessions from JSON (${imported} imported, ${skipped} skipped).`);
     setReloadTick((x) => x + 1);
   };
 
@@ -106,9 +118,10 @@ export function Progress() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <Link to="/app" className="text-sm text-warm-400 hover:text-primary-600 transition-colors mb-1 inline-block">
-              ← Back to dashboard
+              ← {t(settings.language, 'common.backDashboard')}
             </Link>
-            <h1 className="section-title">Progress</h1>
+            <h1 className="section-title">{t(settings.language, 'progress.title')}</h1>
+            <p className="text-xs text-warm-400 mt-1">{t(settings.language, 'common.activeProfile')}: {profile.name}</p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             <button
@@ -117,7 +130,7 @@ export function Progress() {
               disabled={valid.length === 0}
               className="btn-secondary text-sm disabled:opacity-50"
             >
-              Export PDF
+              {t(settings.language, 'common.exportPdf')}
             </button>
             <button
               type="button"
@@ -125,7 +138,7 @@ export function Progress() {
               disabled={valid.length === 0}
               className="btn-secondary text-sm disabled:opacity-50"
             >
-              Export CSV
+              {t(settings.language, 'common.exportCsv')}
             </button>
             <button
               type="button"
@@ -133,7 +146,7 @@ export function Progress() {
               disabled={valid.length === 0}
               className="btn-secondary text-sm disabled:opacity-50"
             >
-              Backup JSON
+              {t(settings.language, 'common.backupJson')}
             </button>
           </div>
         </div>
@@ -141,21 +154,21 @@ export function Progress() {
         {/* Overview cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="card p-4">
-            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">Total time</p>
+            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">{t(settings.language, 'dash.totalTime')}</p>
             <span className="font-display font-bold text-2xl text-warm-800">{Math.round(totalMinutes)} min</span>
           </div>
           <div className="card p-4">
-            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">Sessions</p>
+            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">{t(settings.language, 'dash.sessions')}</p>
             <span className="font-display font-bold text-2xl text-warm-800">{valid.length}</span>
           </div>
           <div className="card p-4">
-            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">This week</p>
+            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">{t(settings.language, 'dash.thisWeek')}</p>
             <span className={`font-display font-bold text-2xl ${sessionsThisWeek.length >= settings.weeklyGoalSessions ? 'text-green-600' : 'text-warm-800'}`}>
               {sessionsThisWeek.length}/{settings.weeklyGoalSessions}
             </span>
           </div>
           <div className="card p-4">
-            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">Streak</p>
+            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">{t(settings.language, 'dash.streak')}</p>
             <span className="font-display font-bold text-2xl text-warm-800">{streak} day{streak !== 1 ? 's' : ''}</span>
           </div>
         </div>
@@ -163,11 +176,14 @@ export function Progress() {
         <div className="card p-4 mb-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">Quality trend</p>
+              <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">{t(settings.language, 'progress.qualityTrend')}</p>
               <p className="font-display font-bold text-2xl text-primary-700">{qualityTrend}/100</p>
+              <p className="text-xs text-warm-500 mt-1">
+                Baseline: {baselineQuality}/100 ({qualityDelta >= 0 ? '+' : ''}{qualityDelta})
+              </p>
             </div>
             <label className="btn-ghost cursor-pointer text-sm">
-              Import backup JSON
+              {t(settings.language, 'common.importBackup')}
               <input
                 type="file"
                 accept="application/json,.json"
@@ -185,10 +201,21 @@ export function Progress() {
           {importStatus && <p className="text-sm text-warm-500 mt-2">{importStatus}</p>}
         </div>
 
+        <div className="card p-4 mb-8">
+          <h2 className="font-display font-semibold text-warm-800 mb-3">{t(settings.language, 'progress.riskMonitor')}</h2>
+          <div className="space-y-2">
+            {riskAlerts.map((r) => (
+              <p key={r.id} className="text-sm text-warm-600">
+                <span className="font-semibold text-warm-800">{r.title}:</span> {r.detail}
+              </p>
+            ))}
+          </div>
+        </div>
+
         {/* Score chart */}
         {chartData.length >= 2 && (
           <div className="card p-5 sm:p-6 mb-8">
-            <h2 className="font-display font-semibold text-warm-800 mb-4">Score over time</h2>
+            <h2 className="font-display font-semibold text-warm-800 mb-4">{t(settings.language, 'progress.scoreOverTime')}</h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
@@ -221,7 +248,7 @@ export function Progress() {
         {/* Per-game breakdown */}
         {gameStats.length > 0 && (
           <div className="mb-8">
-            <h2 className="font-display font-semibold text-warm-800 mb-4">Exercise breakdown</h2>
+            <h2 className="font-display font-semibold text-warm-800 mb-4">{t(settings.language, 'progress.exerciseBreakdown')}</h2>
             <div className="grid sm:grid-cols-3 gap-4">
               {gameStats.map(g => (
                 <div key={g.game} className="card p-5">
@@ -249,7 +276,7 @@ export function Progress() {
         {/* Session history table */}
         {valid.length > 0 && (
           <div className="mb-8">
-            <h2 className="font-display font-semibold text-warm-800 mb-4">Session history</h2>
+            <h2 className="font-display font-semibold text-warm-800 mb-4">{t(settings.language, 'progress.history')}</h2>
             <div className="card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
@@ -260,6 +287,7 @@ export function Progress() {
                       <th className="p-3 font-semibold text-warm-500 text-xs uppercase tracking-wider">Score</th>
                       <th className="p-3 font-semibold text-warm-500 text-xs uppercase tracking-wider">Duration</th>
                       <th className="p-3 font-semibold text-warm-500 text-xs uppercase tracking-wider">Quality</th>
+                      <th className="p-3 font-semibold text-warm-500 text-xs uppercase tracking-wider">Tracking</th>
                       <th className="p-3 font-semibold text-warm-500 text-xs uppercase tracking-wider">Notes</th>
                     </tr>
                   </thead>
@@ -272,8 +300,14 @@ export function Progress() {
                         <td className="p-3">{Math.floor(s.durationSeconds / 60)}m {s.durationSeconds % 60}s</td>
                         <td className="p-3">{s.metrics.qualityScore ?? computeQualityScore(s.metrics)}</td>
                         <td className="p-3">
+                          {s.metrics.cameraQualityScore != null ? `${Math.round(s.metrics.cameraQualityScore)}/100` : '—'}
+                          {s.metrics.sessionIntegrity && s.metrics.sessionIntegrity !== 'ok' && (
+                            <span className="text-xs text-red-600 ml-1">({s.metrics.sessionIntegrity})</span>
+                          )}
+                        </td>
+                        <td className="p-3">
                           <button type="button" className="text-primary-600 hover:underline" onClick={() => startEdit(s)}>
-                            {s.annotations?.notes ? 'Edit note' : 'Add note'}
+                            {s.annotations?.notes ? t(settings.language, 'progress.editNote') : t(settings.language, 'progress.addNote')}
                           </button>
                         </td>
                       </tr>
@@ -321,8 +355,8 @@ export function Progress() {
               />
             </label>
             <div className="flex gap-2">
-              <button type="button" className="btn-primary text-sm" onClick={saveEdit}>Save annotation</button>
-              <button type="button" className="btn-ghost text-sm" onClick={() => setSelectedSessionId(null)}>Cancel</button>
+              <button type="button" className="btn-primary text-sm" onClick={saveEdit}>{t(settings.language, 'progress.saveAnnotation')}</button>
+              <button type="button" className="btn-ghost text-sm" onClick={() => setSelectedSessionId(null)}>{t(settings.language, 'common.cancel')}</button>
             </div>
           </div>
         )}
@@ -330,10 +364,10 @@ export function Progress() {
         {valid.length === 0 && (
           <div className="card p-8 text-center">
             <div className="text-4xl mb-3">📊</div>
-            <p className="text-warm-500 font-medium">No sessions yet</p>
+            <p className="text-warm-500 font-medium">{t(settings.language, 'progress.noSessions')}</p>
             <p className="text-warm-400 text-sm mt-1">Complete your first exercise to start tracking progress.</p>
             <Link to="/app" className="btn-primary mt-4 text-sm">
-              Go to exercises
+              {t(settings.language, 'progress.goExercises')}
             </Link>
           </div>
         )}

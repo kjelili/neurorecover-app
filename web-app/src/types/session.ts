@@ -30,6 +30,9 @@ export interface SessionMetrics {
   smoothnessEstimate?: number;
   qualityScore?: number;
   difficultyLevel?: number;
+  compensationRisk?: number;
+  cameraQualityScore?: number;
+  sessionIntegrity?: 'ok' | 'short-session' | 'low-tracking';
 }
 
 export interface SessionAnnotations {

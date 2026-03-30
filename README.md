@@ -9,6 +9,7 @@ NeuroRecover turns repetitive physiotherapy into adaptive games using your devic
 - User guide: `docs/USER_GUIDE.md`
 - Therapist workflow: `docs/THERAPIST_WORKFLOW.md`
 - Vercel deployment guide: `docs/VERCEL_DEPLOYMENT.md`
+- Multilingual + voice controls: `docs/MULTILINGUAL_AND_VOICE.md`
 - Web app developer notes: `web-app/README.md`
 
 ## Features
@@ -20,6 +21,10 @@ NeuroRecover turns repetitive physiotherapy into adaptive games using your devic
 - Accessibility settings (large text, high contrast, reduced motion, voice coaching)
 - Local multi-profile mode and therapist clinical tools (protocol templates + assessments)
 - Therapist export bundle per active profile (JSON)
+- Clinical report PDF and FHIR-like interoperability export
+- Role-based workflows (patient, therapist, admin), onboarding, consent, and audit trail
+- Clinic admin console (therapist users, caseload assignments)
+- Multilingual UI + voice actions (including Nigerian Pidgin and African language options)
 - Local-first privacy model (all data in browser storage)
 
 ## Local development
