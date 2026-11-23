@@ -96,10 +96,10 @@ export function AppShell() {
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-warm-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-14 sm:h-16 gap-6">
-            {/* Logo */}
-            <Link to="/app" className="flex items-center gap-2 flex-shrink-0">
-              <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
-                <span className="text-white text-sm font-bold">N</span>
+            {/* Logo → back to landing page */}
+            <Link to="/" className="flex items-center gap-2 flex-shrink-0" title="NeuroRecover home">
+              <div className="w-8 h-8 rounded-lg bg-primary-700 flex items-center justify-center">
+                <span className="text-white text-sm font-bold font-display">N</span>
               </div>
               <span className="font-display font-bold text-warm-900 hidden sm:inline">NeuroRecover</span>
             </Link>
@@ -215,12 +215,7 @@ export function AppShell() {
               >
                 {voiceState.listening ? t(settings.language, 'voice.stop') : t(settings.language, 'voice.listen')}
               </button>
-              <Link
-                to="/"
-                className="text-xs text-warm-400 hover:text-primary-600 transition-colors hidden sm:block"
-              >
-                {t(settings.language, 'nav.about')}
-              </Link>
+              {/* Logo already links back to the landing page */}
             </div>
           </div>
         </div>

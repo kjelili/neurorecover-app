@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { CameraView } from '../components/CameraView';
+import { GameHeader } from '../components/GameHeader';
 import { SessionWrapper } from '../components/SessionWrapper';
 import { useHandTracking, type HandResult, type Landmark } from '../hooks/useHandTracking';
 import type { SessionMetrics } from '../types/session';
@@ -117,12 +117,7 @@ export function BubbleGame() {
 
   return (
     <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-5xl mx-auto w-full">
-      <div className="mb-6">
-        <Link to="/app" className="text-sm text-warm-400 hover:text-primary-600 transition-colors mb-1 inline-block">
-          ← {t(settings.language, 'game.back')}
-        </Link>
-        <h1 className="section-title">🫧 {t(settings.language, 'game.bubble.title')}</h1>
-      </div>
+      <GameHeader game="bubbles" title={t(settings.language, 'game.bubble.title')} backLabel={t(settings.language, 'game.back')} />
 
       <SessionWrapper game="bubbles" getCurrentMetrics={getCurrentMetrics}>
         <p className="text-warm-500 text-sm mb-6">
@@ -163,16 +158,20 @@ export function BubbleGame() {
           </div>
 
           <div className="lg:col-span-2 flex flex-col justify-center">
-            <div className="card p-6 text-center">
-              <p className="text-warm-400 text-sm font-medium mb-1">Score</p>
-              <p className="font-display font-bold text-5xl text-primary-700 mb-2">{score}</p>
-              {encouragement && (
-                <p className="text-accent-500 text-sm font-semibold animate-bounce-subtle" role="status">
-                  {encouragement}
-                </p>
-              )}
-              <div className="mt-4 pt-4 border-t border-warm-100">
-                <p className="text-xs text-warm-400">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-700 to-primary-900 p-6 text-center text-white shadow-elevated">
+              <div className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white/10" />
+              <div className="pointer-events-none absolute -bottom-12 -left-8 w-36 h-36 rounded-full bg-accent-500/20" />
+              <p className="text-primary-200 text-sm font-medium mb-1 tracking-wide uppercase">Score</p>
+              <p className="font-display font-bold text-6xl mb-2 drop-shadow-sm">{score}</p>
+              <div className="min-h-[1.5rem]">
+                {encouragement && (
+                  <p className="text-accent-200 text-sm font-semibold animate-pulse-soft" role="status">
+                    {encouragement}
+                  </p>
+                )}
+              </div>
+              <div className="mt-4 pt-4 border-t border-white/15">
+                <p className="text-xs text-primary-200">
                   Difficulty adapts in real-time based on your performance
                 </p>
               </div>

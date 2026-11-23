@@ -50,11 +50,17 @@ export function CameraView({ onVideoReady, className = '', mirrored = true, chil
 
   if (error) {
     return (
-      <div className={`rounded-2xl bg-warm-100 border border-warm-200 p-6 text-center ${className}`}>
-        <div className="text-3xl mb-3">📷</div>
-        <p className="text-warm-700 text-sm font-medium mb-1">Camera unavailable</p>
+      <div className={`rounded-2xl bg-accent-50 border border-accent-100 p-6 text-center flex flex-col items-center justify-center ${className}`}>
+        <span className="w-12 h-12 rounded-2xl bg-white shadow-soft flex items-center justify-center mb-3 text-accent-500">
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" />
+            <path d="m16 10.5 5-2.5v8l-5-2.5" />
+            <path d="m4 4 16 16" />
+          </svg>
+        </span>
+        <p className="text-warm-700 text-sm font-semibold mb-1">Camera unavailable</p>
         <p className="text-warm-500 text-xs">{error}</p>
-        <p className="text-warm-400 text-xs mt-2">You can still tap/click to play.</p>
+        <p className="text-primary-600 text-xs mt-2 font-medium">You can still play — tap, click, or drag.</p>
       </div>
     );
   }
@@ -62,9 +68,9 @@ export function CameraView({ onVideoReady, className = '', mirrored = true, chil
   return (
     <div className={`relative rounded-2xl overflow-hidden bg-warm-900 ${className}`}>
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-warm-100">
+        <div className="absolute inset-0 flex items-center justify-center bg-accent-50">
           <div className="flex flex-col items-center gap-2">
-            <div className="w-8 h-8 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-accent-200 border-t-accent-500 rounded-full animate-spin" />
             <span className="text-warm-500 text-sm">Starting camera…</span>
           </div>
         </div>
@@ -73,8 +79,7 @@ export function CameraView({ onVideoReady, className = '', mirrored = true, chil
         ref={videoRef}
         playsInline
         muted
-        className={`w-full h-full object-cover ${mirrored ? 'scale-x-[-1]' : ''} ${loading ? 'invisible' : ''}`}
-        style={{ maxHeight: '50vh' }}
+        className={`absolute inset-0 w-full h-full object-cover ${mirrored ? 'scale-x-[-1]' : ''} ${loading ? 'invisible' : ''}`}
       />
       {children && <div className="absolute inset-0">{children}</div>}
     </div>

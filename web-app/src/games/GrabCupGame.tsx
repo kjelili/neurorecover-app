@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { CameraView } from '../components/CameraView';
+import { GameHeader } from '../components/GameHeader';
 import { SessionWrapper } from '../components/SessionWrapper';
 import { useHandTracking, type HandResult, type Landmark } from '../hooks/useHandTracking';
 import type { SessionMetrics } from '../types/session';
@@ -69,12 +69,7 @@ export function GrabCupGame() {
 
   return (
     <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-5xl mx-auto w-full">
-      <div className="mb-6">
-        <Link to="/app" className="text-sm text-warm-400 hover:text-primary-600 transition-colors mb-1 inline-block">
-          ← {t(settings.language, 'game.back')}
-        </Link>
-        <h1 className="section-title">🥤 {t(settings.language, 'game.grab.title')}</h1>
-      </div>
+      <GameHeader game="grab-cup" title={t(settings.language, 'game.grab.title')} backLabel={t(settings.language, 'game.back')} />
 
       <SessionWrapper game="grab-cup" getCurrentMetrics={getCurrentMetrics}>
         <p className="text-warm-500 text-sm mb-6">

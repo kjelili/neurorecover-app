@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getLastSession, getRecentSessions, getSessionsThisWeek, getCurrentStreak, getTotalMinutes } from '../utils/sessionStorage';
 import { getEnabledGames } from '../config/appConfig';
 import type { StoredSession } from '../types/session';
-import { GAME_ICONS, GAME_LABELS } from '../types/session';
+import { GAME_LABELS } from '../types/session';
 import { computeQualityScore, getRecoveryRecommendations, getRiskAlerts } from '../utils/recoveryInsights';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getActiveProfile } from '../utils/patientProfiles';
@@ -74,7 +74,6 @@ export function Dashboard() {
         {/* Stats row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="card p-4 sm:p-5">
-            <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">This week</p>
             <p className="text-warm-400 text-xs font-medium uppercase tracking-wider mb-1">{t(settings.language, 'dash.thisWeek')}</p>
             <div className="flex items-end gap-1">
               <span className={`font-display font-bold text-2xl ${sessionsThisWeek.length >= weeklyGoal ? 'text-green-600' : 'text-warm-800'}`}>
@@ -158,8 +157,8 @@ export function Dashboard() {
             <h2 className="font-display font-semibold text-lg text-warm-800 mb-4">{t(settings.language, 'dash.lastSession')}</h2>
             <div className="card p-5 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center text-xl">
-                  {GAME_ICONS[lastSession.game] ?? '🎮'}
+                <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center">
+                  <GameIcon game={lastSession.game} className="w-5 h-5" />
                 </div>
                 <div>
                   <p className="font-semibold text-warm-800">{GAME_LABELS[lastSession.game]}</p>
@@ -187,7 +186,9 @@ export function Dashboard() {
               {recentSessions.filter(s => s != null && typeof s.endedAt === 'number').slice(0, 5).map((s, i) => (
                 <div key={s.id} className={`flex items-center justify-between px-5 py-3 ${i > 0 ? 'border-t border-warm-100' : ''}`}>
                   <div className="flex items-center gap-3">
-                    <span className="text-lg">{GAME_ICONS[s.game] ?? '🎮'}</span>
+                    <span className="w-8 h-8 rounded-lg bg-primary-100 text-primary-700 flex items-center justify-center flex-shrink-0">
+                      <GameIcon game={s.game} className="w-4 h-4" />
+                    </span>
                     <span className="text-warm-700 text-sm font-medium capitalize">{s.game.replace(/-/g, ' ')}</span>
                   </div>
                   <div className="flex items-center gap-4">
