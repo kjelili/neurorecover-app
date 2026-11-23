@@ -2,6 +2,7 @@ import { getActiveProfileId } from './patientProfiles';
 import { getActiveProfile } from './patientProfiles';
 import { getAllSessions } from './sessionStorage';
 import { loadAppSettings } from './appSettings';
+import type { GameType } from '../types/session';
 
 export interface ProtocolTemplate {
   id: string;
@@ -11,7 +12,7 @@ export interface ProtocolTemplate {
   focus: string;
   sessionMinutes: number;
   weeklySessions: number;
-  breakdown: Array<{ game: 'piano' | 'bubbles' | 'grab-cup'; minutes: number }>;
+  breakdown: Array<{ game: GameType; minutes: number }>;
 }
 
 export interface ClinicalAssessment {
@@ -87,6 +88,35 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
       { game: 'piano', minutes: 3 },
       { game: 'bubbles', minutes: 2 },
       { game: 'grab-cup', minutes: 3 },
+    ],
+  },
+  {
+    id: 'adl-daily-living',
+    name: 'ADL Daily Living',
+    stage: 'subacute',
+    targetProfile: 'balanced',
+    focus: 'Task-oriented practice of daily activities: grasping, pouring, and guided reaching.',
+    sessionMinutes: 12,
+    weeklySessions: 5,
+    breakdown: [
+      { game: 'grab-cup', minutes: 3 },
+      { game: 'pour', minutes: 4 },
+      { game: 'bubbles', minutes: 3 },
+      { game: 'mirror', minutes: 2 },
+    ],
+  },
+  {
+    id: 'mirror-therapy',
+    name: 'Mirror Therapy Adjunct',
+    stage: 'subacute',
+    targetProfile: 'low-rom',
+    focus: 'Virtual mirror feedback for the affected hand, paired with gentle active movement (NICE NG236 adjunct).',
+    sessionMinutes: 10,
+    weeklySessions: 5,
+    breakdown: [
+      { game: 'mirror', minutes: 6 },
+      { game: 'pour', minutes: 2 },
+      { game: 'piano', minutes: 2 },
     ],
   },
 ];

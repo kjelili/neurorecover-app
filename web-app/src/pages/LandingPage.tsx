@@ -19,6 +19,16 @@ const FEATURES = [
     desc: 'Close your hand and hold to grip. Directly trains the cup-grasp pattern of daily living.',
   },
   {
+    icon: '🫖',
+    title: 'Pour & Steady',
+    desc: 'Rotate your forearm to pour from a virtual teapot. Trains pronation and supination with graded, spill-aware control.',
+  },
+  {
+    icon: '🪞',
+    title: 'Mirror Match',
+    desc: 'Virtual mirror therapy: move your stronger hand and guide its reflection — your recovering hand — to each target.',
+  },
+  {
     icon: '📊',
     title: 'Progress Tracking',
     desc: 'ROM, smoothness, tremor, and scores tracked across sessions with exportable PDF reports.',
@@ -97,7 +107,7 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {[
-              ['3', 'Targeted exercises'],
+              ['5', 'Targeted exercises'],
               ['21', 'Hand landmarks tracked'],
               ['< 2s', 'Response latency'],
               ['100%', 'Private & offline'],
@@ -115,7 +125,7 @@ export function LandingPage() {
       <section id="how-it-works" className="px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <h2 className="section-title mb-3">Three exercises, real results</h2>
+            <h2 className="section-title mb-3">Five exercises, real results</h2>
             <p className="text-warm-500 max-w-xl mx-auto">
               Each exercise targets a specific motor skill. Complete sessions to build a picture of your recovery.
             </p>

@@ -25,6 +25,10 @@ export function seedMockSessions(): void {
     make('grab-cup', now - 5 * day, 120, 8, undefined, [0.7, 0.85, 0.8, 0.75, 0.65], 0.15, 0.68),
     make('bubbles', now - 6 * day, 158, 25),
     make('piano', now - 7 * day, 170, 32, 480, [0.7, 0.85, 0.8, 0.75, 0.65], 0.13, 0.7),
+    make('pour', now - 2 * day, 150, 6, undefined, undefined, 0.1, 0.74),
+    make('mirror', now - 4 * day, 160, 14, 2400, undefined, undefined, 0.66),
+    make('mirror', now - 6 * day, 155, 12, 2650, undefined, undefined, 0.6),
+    make('pour', now - 5 * day, 140, 5, undefined, undefined, 0.14, 0.62),
   ];
   try { localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessions)); } catch { /* */ }
 }

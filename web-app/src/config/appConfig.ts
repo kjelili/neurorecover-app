@@ -63,6 +63,24 @@ export const defaultAppConfig: AppConfig = {
       color: 'primary',
       enabled: true,
     },
+    {
+      id: 'pour',
+      path: '/app/pour',
+      label: 'Pour & Steady',
+      description: 'Forearm rotation control. Tilt the teapot smoothly to fill each cup.',
+      icon: '🫖',
+      color: 'accent',
+      enabled: true,
+    },
+    {
+      id: 'mirror',
+      path: '/app/mirror',
+      label: 'Mirror Match',
+      description: 'Mirror therapy. Move your stronger hand and guide its reflection to the orbs.',
+      icon: '🪞',
+      color: 'primary',
+      enabled: true,
+    },
   ],
 };
 

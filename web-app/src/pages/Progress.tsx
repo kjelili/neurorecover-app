@@ -50,7 +50,7 @@ export function Progress() {
     }));
 
   // Per-game stats
-  const gameStats = (['piano', 'bubbles', 'grab-cup'] as const).map(game => {
+  const gameStats = (Object.keys(GAME_LABELS) as Array<keyof typeof GAME_LABELS>).map(game => {
     const gameSessions = valid.filter(s => s.game === game);
     const scores = gameSessions.map(s => s.metrics.score ?? 0).filter(s => s > 0);
     return {

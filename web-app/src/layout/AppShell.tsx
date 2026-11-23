@@ -12,6 +12,8 @@ const BASE_NAV_ITEMS = [
   { to: '/app/piano', labelKey: 'nav.piano', icon: '🎹', end: false },
   { to: '/app/bubbles', labelKey: 'nav.bubbles', icon: '🫧', end: false },
   { to: '/app/grab-cup', labelKey: 'nav.grasp', icon: '🥤', end: false },
+  { to: '/app/pour', labelKey: 'nav.pour', icon: '🫖', end: false },
+  { to: '/app/mirror', labelKey: 'nav.mirror', icon: '🪞', end: false },
   { to: '/app/progress', labelKey: 'nav.progress', icon: '', end: false },
   { to: '/app/settings', labelKey: 'nav.settings', icon: '', end: false },
   { to: '/app/evidence', labelKey: 'nav.evidence', icon: '', end: false },

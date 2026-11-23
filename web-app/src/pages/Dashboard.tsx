@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getLastSession, getRecentSessions, getSessionsThisWeek, getCurrentStreak, getTotalMinutes } from '../utils/sessionStorage';
 import { getEnabledGames } from '../config/appConfig';
 import type { StoredSession } from '../types/session';
-import { GAME_LABELS } from '../types/session';
+import { GAME_ICONS, GAME_LABELS } from '../types/session';
 import { computeQualityScore, getRecoveryRecommendations, getRiskAlerts } from '../utils/recoveryInsights';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getActiveProfile } from '../utils/patientProfiles';
@@ -156,7 +156,7 @@ export function Dashboard() {
             <div className="card p-5 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center text-xl">
-                  {lastSession.game === 'piano' ? '🎹' : lastSession.game === 'bubbles' ? '🫧' : '🥤'}
+                  {GAME_ICONS[lastSession.game] ?? '🎮'}
                 </div>
                 <div>
                   <p className="font-semibold text-warm-800">{GAME_LABELS[lastSession.game]}</p>
@@ -184,7 +184,7 @@ export function Dashboard() {
               {recentSessions.filter(s => s != null && typeof s.endedAt === 'number').slice(0, 5).map((s, i) => (
                 <div key={s.id} className={`flex items-center justify-between px-5 py-3 ${i > 0 ? 'border-t border-warm-100' : ''}`}>
                   <div className="flex items-center gap-3">
-                    <span className="text-lg">{s.game === 'piano' ? '🎹' : s.game === 'bubbles' ? '🫧' : '🥤'}</span>
+                    <span className="text-lg">{GAME_ICONS[s.game] ?? '🎮'}</span>
                     <span className="text-warm-700 text-sm font-medium capitalize">{s.game.replace(/-/g, ' ')}</span>
                   </div>
                   <div className="flex items-center gap-4">

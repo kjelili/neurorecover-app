@@ -29,7 +29,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [durationSeconds, setDurationSeconds] = useState(DEFAULT_DURATION);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [startedAt, setStartedAt] = useState(0);
-  const [onSessionComplete, setOnSessionComplete] = useState<((s: SessionSummary) => void) | null>(null);
+  const [onSessionComplete, setOnSessionCompleteState] = useState<((s: SessionSummary) => void) | null>(null);
   const [lastCompletedSummary, setLastCompletedSummary] = useState<SessionSummary | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [pauseEndsAt, setPauseEndsAt] = useState(0);
@@ -45,6 +45,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const setGetCurrentAnnotations = useCallback((fn: (() => SessionAnnotations | undefined) | null) => {
     getCurrentAnnotationsRef.current = fn;
+  }, []);
+
+  // React treats a function passed to a state setter as an updater and calls it,
+  // which silently discarded the callback and prevented sessions from being saved.
+  // Wrap explicitly so the callback itself is stored.
+  const setOnSessionComplete = useCallback((fn: ((s: SessionSummary) => void) | null) => {
+    setOnSessionCompleteState(fn ? () => fn : null);
   }, []);
 
   const startSession = useCallback((g: GameType, duration?: number) => {

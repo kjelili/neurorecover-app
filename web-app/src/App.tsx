@@ -16,6 +16,8 @@ const Progress = lazy(() => import('./pages/Progress').then(m => ({ default: m.P
 const PianoGame = lazy(() => import('./games/PianoGame').then(m => ({ default: m.PianoGame })));
 const BubbleGame = lazy(() => import('./games/BubbleGame').then(m => ({ default: m.BubbleGame })));
 const GrabCupGame = lazy(() => import('./games/GrabCupGame').then(m => ({ default: m.GrabCupGame })));
+const PourSteadyGame = lazy(() => import('./games/PourSteadyGame').then(m => ({ default: m.PourSteadyGame })));
+const MirrorMatchGame = lazy(() => import('./games/MirrorMatchGame').then(m => ({ default: m.MirrorMatchGame })));
 
 function Loading() {
   return (
@@ -66,6 +68,8 @@ function App() {
                 <Route path="piano" element={<PianoGame />} />
                 <Route path="bubbles" element={<BubbleGame />} />
                 <Route path="grab-cup" element={<GrabCupGame />} />
+                <Route path="pour" element={<PourSteadyGame />} />
+                <Route path="mirror" element={<MirrorMatchGame />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

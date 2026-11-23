@@ -34,6 +34,11 @@ export function playGrab(): void {
   setTimeout(() => playTone(140, 80, 'sine', 0.08), 60);
 }
 
+export function playPour(): void {
+  playTone(320, 90, 'sine', 0.05);
+  setTimeout(() => playTone(280, 70, 'sine', 0.04), 50);
+}
+
 export function playSuccess(): void {
   playTone(523, 120, 'sine', 0.12);
   setTimeout(() => playTone(659, 100, 'sine', 0.1), 80);

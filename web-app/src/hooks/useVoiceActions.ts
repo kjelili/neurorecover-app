@@ -17,6 +17,8 @@ const COMMANDS: Array<{ intent: string; patterns: RegExp[] }> = [
   { intent: 'open-piano', patterns: [/\b(open|go|show)\b.*\b(piano)\b/, /\bpiano\b/] },
   { intent: 'open-bubbles', patterns: [/\b(open|go|show)\b.*\b(bubble|bubbles)\b/, /\bbubbles?\b/] },
   { intent: 'open-grab', patterns: [/\b(open|go|show)\b.*\b(grab|cup|grasp)\b/, /\b(grab|grasp)\b/] },
+  { intent: 'open-pour', patterns: [/\b(open|go|show)\b.*\b(pour|teapot|tea|kettle)\b/, /\b(pour|teapot)\b/] },
+  { intent: 'open-mirror', patterns: [/\b(open|go|show)\b.*\b(mirror)\b/, /\bmirror\b/] },
   { intent: 'open-progress', patterns: [/\b(open|go|show)\b.*\b(progress)\b/, /\bprogress\b/] },
   { intent: 'open-settings', patterns: [/\b(open|go|show)\b.*\b(settings?)\b/, /\bsettings?\b/] },
   { intent: 'open-clinical', patterns: [/\b(open|go|show)\b.*\b(clinic|clinical)\b/, /\bclinical\b/] },
@@ -55,6 +57,8 @@ function executeIntent(intent: string, navigate: NavigateFunction): void {
     case 'open-piano': navigate('/app/piano'); return;
     case 'open-bubbles': navigate('/app/bubbles'); return;
     case 'open-grab': navigate('/app/grab-cup'); return;
+    case 'open-pour': navigate('/app/pour'); return;
+    case 'open-mirror': navigate('/app/mirror'); return;
     case 'open-progress': navigate('/app/progress'); return;
     case 'open-settings': navigate('/app/settings'); return;
     case 'open-clinical': navigate('/app/clinical'); return;

@@ -2,24 +2,30 @@
  * Core session and metrics types for NeuroRecover.
  */
 
-export type GameType = 'piano' | 'bubbles' | 'grab-cup';
+export type GameType = 'piano' | 'bubbles' | 'grab-cup' | 'pour' | 'mirror';
 
 export const GAME_LABELS: Record<GameType, string> = {
   piano: 'Virtual Piano',
   bubbles: 'Bubble Pop',
   'grab-cup': 'Cup Grasp',
+  pour: 'Pour & Steady',
+  mirror: 'Mirror Match',
 };
 
 export const GAME_ICONS: Record<GameType, string> = {
   piano: '🎹',
   bubbles: '🫧',
   'grab-cup': '🥤',
+  pour: '🫖',
+  mirror: '🪞',
 };
 
 export const GAME_DESCRIPTIONS: Record<GameType, string> = {
   piano: 'Improve finger isolation and reaction time by pressing piano keys with individual fingers.',
   bubbles: 'Build reach and pinch control by popping bubbles that adapt to your ability.',
   'grab-cup': 'Strengthen hand closure and grip by holding a fist to grasp a virtual cup.',
+  pour: 'Train forearm rotation (pronation and supination) by tilting a virtual teapot to fill cups.',
+  mirror: 'Mirror therapy: move your stronger hand and guide its reflection to collect orbs.',
 };
 
 export interface SessionMetrics {
@@ -31,6 +37,7 @@ export interface SessionMetrics {
   qualityScore?: number;
   difficultyLevel?: number;
   compensationRisk?: number;
+  rotationRangeDeg?: number;
   cameraQualityScore?: number;
   sessionIntegrity?: 'ok' | 'short-session' | 'low-tracking';
 }
