@@ -4,20 +4,26 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
-        display: ['"Instrument Sans"', '"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+        sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
+        display: ['Lora', 'Georgia', 'serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       colors: {
         primary: {
-          50: '#effefb', 100: '#c8fff4', 200: '#91feea', 300: '#52f5dc',
-          400: '#20e0c8', 500: '#07c4af', 600: '#029e8f', 700: '#067e74',
-          800: '#0a635d', 900: '#0d524d', 950: '#003230',
+          50: '#f0f7f6', 100: '#dcebe9', 200: '#b9d7d3', 300: '#8fbcb6',
+          400: '#5e9a92', 500: '#3d7f75', 600: '#2a675f', 700: '#1a4a48',
+          800: '#143c3a', 900: '#0f2e2d', 950: '#081f1e',
         },
         accent: {
-          50: '#fff5f2', 100: '#ffe8e1', 200: '#ffd5c8', 300: '#ffb5a1',
-          400: '#ff8a6b', 500: '#f96b45', 600: '#e64f27', 700: '#c13e1d',
-          800: '#9f361c', 900: '#84311e', 950: '#47160b',
+          50: '#ffefe9', 100: '#ffe0d4', 200: '#ffc3ad', 300: '#ffa07e',
+          400: '#f97e52', 500: '#e85a3c', 600: '#d14a2e', 700: '#b03a24',
+          800: '#8c301f', 900: '#6f281b', 950: '#47160b',
+        },
+        blush: {
+          100: '#fbd9d4', 200: '#f4a8a8', 300: '#ee8a8c',
+        },
+        marigold: {
+          300: '#f5b87a', 400: '#ee9c55', 500: '#e87a3c',
         },
         warm: {
           50: '#fafaf9', 100: '#f5f5f3', 200: '#e8e7e4', 300: '#d5d3cf',

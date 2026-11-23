@@ -8,6 +8,7 @@ import { computeQualityScore, getRecoveryRecommendations, getRiskAlerts } from '
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getActiveProfile } from '../utils/patientProfiles';
 import { t } from '../utils/i18n';
+import { GameIcon } from '../components/GameIcon';
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -133,7 +134,9 @@ export function Dashboard() {
                 to={game.path}
                 className="card-hover p-6 group"
               >
-                <span className="text-3xl mb-3 block">{game.icon}</span>
+                <span className="w-12 h-12 rounded-2xl bg-primary-100 text-primary-700 flex items-center justify-center mb-4 group-hover:bg-primary-700 group-hover:text-white transition-colors">
+                  <GameIcon game={game.id} className="w-6 h-6" />
+                </span>
                 <h3 className="font-display font-semibold text-warm-900 mb-1 group-hover:text-primary-700 transition-colors">
                   {game.label}
                 </h3>

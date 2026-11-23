@@ -1,22 +1,20 @@
-import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useSessionOptional } from '../context/SessionContext';
 import { SessionCompleteScreen } from '../components/SessionWrapper';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getLastSession } from '../utils/sessionStorage';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LANGUAGE_OPTIONS, getSpeechLocale, t } from '../utils/i18n';
 import { useVoiceActions } from '../hooks/useVoiceActions';
+import { getEnabledGames } from '../config/appConfig';
+import { GAME_LABELS } from '../types/session';
+import { GameIcon } from '../components/GameIcon';
 
 const BASE_NAV_ITEMS = [
-  { to: '/app', labelKey: 'nav.dashboard', icon: '', end: true },
-  { to: '/app/piano', labelKey: 'nav.piano', icon: '🎹', end: false },
-  { to: '/app/bubbles', labelKey: 'nav.bubbles', icon: '🫧', end: false },
-  { to: '/app/grab-cup', labelKey: 'nav.grasp', icon: '🥤', end: false },
-  { to: '/app/pour', labelKey: 'nav.pour', icon: '🫖', end: false },
-  { to: '/app/mirror', labelKey: 'nav.mirror', icon: '🪞', end: false },
-  { to: '/app/progress', labelKey: 'nav.progress', icon: '', end: false },
-  { to: '/app/settings', labelKey: 'nav.settings', icon: '', end: false },
-  { to: '/app/evidence', labelKey: 'nav.evidence', icon: '', end: false },
+  { to: '/app', labelKey: 'nav.dashboard', end: true },
+  { to: '/app/progress', labelKey: 'nav.progress', end: false },
+  { to: '/app/settings', labelKey: 'nav.settings', end: false },
+  { to: '/app/evidence', labelKey: 'nav.evidence', end: false },
 ];
 
 export function AppShell() {
@@ -38,11 +36,50 @@ export function AppShell() {
   const showReminder = settings.reminderEnabled && currentHour >= settings.reminderHour && overdue;
   let navItems = [...BASE_NAV_ITEMS];
   if (settings.therapistMode || settings.userRole !== 'patient') {
-    navItems = [...navItems, { to: '/app/clinical', labelKey: 'nav.clinical', icon: '', end: false }];
+    navItems = [...navItems, { to: '/app/clinical', labelKey: 'nav.clinical', end: false }];
   }
   if (settings.userRole === 'admin') {
-    navItems = [...navItems, { to: '/app/admin', labelKey: 'nav.admin', icon: '', end: false }];
+    navItems = [...navItems, { to: '/app/admin', labelKey: 'nav.admin', end: false }];
   }
+
+  const location = useLocation();
+  const games = getEnabledGames();
+  const onGamePage = games.some((g) => location.pathname.startsWith(g.path));
+  const [exercisesOpen, setExercisesOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const toggleExercises = () => {
+    setExercisesOpen((open) => {
+      if (!open && triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        setMenuPos({
+          top: rect.bottom + 8,
+          left: Math.min(rect.left, Math.max(8, window.innerWidth - 296)),
+        });
+      }
+      return !open;
+    });
+  };
+
+  useEffect(() => {
+    if (!exercisesOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setExercisesOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setExercisesOpen(false); };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [exercisesOpen]);
+
+  // Dropdown closes on outside click / Escape; menu links close it on click.
 
   useEffect(() => {
     const timer = setInterval(() => setNowTs(new Date().getTime()), 60_000);
@@ -69,20 +106,87 @@ export function AppShell() {
 
             {/* Nav */}
             <nav className="flex items-center gap-1 flex-1 overflow-x-auto scrollbar-hide" aria-label="Main">
-              {navItems.map(({ to, labelKey, icon, end }) => (
+              <NavLink
+                to="/app"
+                end
+                className={({ isActive }) =>
+                  `tap-target rounded-full px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-all ${
+                    isActive
+                      ? 'bg-primary-700 text-white'
+                      : 'text-warm-500 hover:text-primary-700 hover:bg-primary-50'
+                  }`
+                }
+              >
+                {t(settings.language, 'nav.dashboard')}
+              </NavLink>
+
+              {/* Exercises dropdown (menu is position:fixed so the nav's
+                  horizontal scroll container cannot clip it) */}
+              <div className="relative flex-shrink-0" ref={dropdownRef}>
+                <button
+                  ref={triggerRef}
+                  type="button"
+                  onClick={toggleExercises}
+                  aria-expanded={exercisesOpen}
+                  aria-haspopup="menu"
+                  className={`tap-target rounded-full px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-all inline-flex items-center gap-1.5 ${
+                    onGamePage
+                      ? 'bg-primary-700 text-white'
+                      : 'text-warm-500 hover:text-primary-700 hover:bg-primary-50'
+                  }`}
+                >
+                  {t(settings.language, 'dash.exercises')}
+                  <svg
+                    className={`w-3.5 h-3.5 transition-transform ${exercisesOpen ? 'rotate-180' : ''}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {exercisesOpen && menuPos && (
+                  <div
+                    role="menu"
+                    style={{ top: menuPos.top, left: menuPos.left }}
+                    className="fixed w-72 rounded-2xl border border-warm-200 bg-white shadow-elevated p-2 z-50 animate-scale-in"
+                  >
+                    {games.map((game) => (
+                      <Link
+                        key={game.id}
+                        to={game.path}
+                        role="menuitem"
+                        onClick={() => setExercisesOpen(false)}
+                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-primary-50 transition-colors group"
+                      >
+                        <span className="w-9 h-9 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center flex-shrink-0 group-hover:bg-primary-700 group-hover:text-white transition-colors">
+                          <GameIcon game={game.id} className="w-5 h-5" />
+                        </span>
+                        <span>
+                          <span className="block text-sm font-semibold text-warm-800">
+                            {GAME_LABELS[game.id]}
+                          </span>
+                          <span className="block text-xs text-warm-400 leading-snug">
+                            {game.description}
+                          </span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {navItems.slice(1).map(({ to, labelKey, end }) => (
                 <NavLink
                   key={to}
                   to={to}
                   end={end}
                   className={({ isActive }) =>
-                    `tap-target rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-all ${
+                    `tap-target rounded-full px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-all ${
                       isActive
-                        ? 'bg-primary-100 text-primary-800'
-                        : 'text-warm-500 hover:text-warm-700 hover:bg-warm-100'
+                        ? 'bg-primary-700 text-white'
+                        : 'text-warm-500 hover:text-primary-700 hover:bg-primary-50'
                     }`
                   }
                 >
-                  {icon ? `${icon} ` : ''}
                   {t(settings.language, labelKey)}
                 </NavLink>
               ))}
